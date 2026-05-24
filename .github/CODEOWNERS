@@ -3,22 +3,22 @@
 # Documentação: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Dono padrão para tudo no repositório
-* @JoaoRG-lab
+* @joaorglab
 
 # Arquivos de segurança e autenticação — revisão obrigatória do mantenedor
-src/integrations/supabase/          @JoaoRG-lab
-supabase/migrations/                @JoaoRG-lab
-supabase/functions/                 @JoaoRG-lab
+src/integrations/supabase/          @joaorglab
+supabase/migrations/                @joaorglab
+supabase/functions/                 @joaorglab
 
 # Roteamento e controle de acesso
-src/App.tsx                         @JoaoRG-lab
-src/components/auth/                @JoaoRG-lab
+src/App.tsx                         @joaorglab
+src/components/auth/                @joaorglab
 
 # Configuração e dados sensíveis
-.env.example                        @JoaoRG-lab
-vite.config.ts                      @JoaoRG-lab
-tailwind.config.ts                  @JoaoRG-lab
+.env.example                        @joaorglab
+vite.config.ts                      @joaorglab
+tailwind.config.ts                  @joaorglab
 
 # Especialidades e lógica clínica
-src/config/specialties.ts           @JoaoRG-lab
-src/hooks/                          @JoaoRG-lab
+src/config/specialties.ts           @joaorglab
+src/hooks/                          @joaorglab
