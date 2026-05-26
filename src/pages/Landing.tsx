@@ -41,21 +41,21 @@ export default function Landing() {
       <header className="fixed top-0 left-0 right-0 z-50 uhs-glass border-b border-border/30">
         <div className="container mx-auto px-6 py-3 flex items-center justify-between">
           <UHSLogo size="sm" />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-2">
             <LanguageSelector variant="minimal" />
             <Link to="/learn">
-              <Button variant="ghost" size="sm" className="gap-1 text-primary flex">
-                <BookOpen className="h-4 w-4" /> <span className="hidden sm:inline">Library</span>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-primary">
+                <BookOpen className="h-4 w-4" /> <span className="hidden md:inline">{t('nav.library')}</span>
               </Button>
             </Link>
             <Link to="/scores">
-              <Button variant="ghost" size="sm" className="gap-1 text-primary flex">
-                <Activity className="h-4 w-4" /> <span className="hidden sm:inline">Calculators</span>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-primary">
+                <Activity className="h-4 w-4" /> <span className="hidden md:inline">{t('nav.calculators')}</span>
               </Button>
             </Link>
             <Link to="/about">
-              <Button variant="ghost" size="sm" className="gap-1 text-primary flex">
-                <Shield className="h-4 w-4" /> <span className="hidden sm:inline">About</span>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-primary hidden sm:inline-flex">
+                <Shield className="h-4 w-4" /> <span className="hidden md:inline">{t('nav.about')}</span>
               </Button>
             </Link>
             <Link to="/login">
