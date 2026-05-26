@@ -71,6 +71,98 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_improvement_runs: {
+        Row: {
+          agent: Database["public"]["Enums"]["ai_agent"]
+          applied_count: number
+          audit_summary: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          proposals: Json
+          queued_count: number
+          started_at: string
+          status: Database["public"]["Enums"]["ai_run_status"]
+        }
+        Insert: {
+          agent: Database["public"]["Enums"]["ai_agent"]
+          applied_count?: number
+          audit_summary?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          proposals?: Json
+          queued_count?: number
+          started_at?: string
+          status?: Database["public"]["Enums"]["ai_run_status"]
+        }
+        Update: {
+          agent?: Database["public"]["Enums"]["ai_agent"]
+          applied_count?: number
+          audit_summary?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          proposals?: Json
+          queued_count?: number
+          started_at?: string
+          status?: Database["public"]["Enums"]["ai_run_status"]
+        }
+        Relationships: []
+      }
+      ai_improvement_tasks: {
+        Row: {
+          agent: Database["public"]["Enums"]["ai_agent"]
+          applied_at: string | null
+          area: Database["public"]["Enums"]["ai_task_area"]
+          created_at: string
+          error: string | null
+          id: string
+          patch: Json
+          rationale: string | null
+          run_id: string
+          severity: Database["public"]["Enums"]["ai_task_severity"]
+          status: Database["public"]["Enums"]["ai_task_status"]
+          title: string
+        }
+        Insert: {
+          agent: Database["public"]["Enums"]["ai_agent"]
+          applied_at?: string | null
+          area: Database["public"]["Enums"]["ai_task_area"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          patch?: Json
+          rationale?: string | null
+          run_id: string
+          severity?: Database["public"]["Enums"]["ai_task_severity"]
+          status?: Database["public"]["Enums"]["ai_task_status"]
+          title: string
+        }
+        Update: {
+          agent?: Database["public"]["Enums"]["ai_agent"]
+          applied_at?: string | null
+          area?: Database["public"]["Enums"]["ai_task_area"]
+          created_at?: string
+          error?: string | null
+          id?: string
+          patch?: Json
+          rationale?: string | null
+          run_id?: string
+          severity?: Database["public"]["Enums"]["ai_task_severity"]
+          status?: Database["public"]["Enums"]["ai_task_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_improvement_tasks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_improvement_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_research_pipeline: {
         Row: {
           academic_review_requested_at: string | null
@@ -512,6 +604,44 @@ export type Database = {
             columns: ["patient_card_id"]
             isOneToOne: false
             referencedRelation: "patient_cards_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_overrides: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          scope: string
+          source_task_id: string | null
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          scope: string
+          source_task_id?: string | null
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          scope?: string
+          source_task_id?: string | null
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_overrides_source_task_id_fkey"
+            columns: ["source_task_id"]
+            isOneToOne: false
+            referencedRelation: "ai_improvement_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -2966,6 +3096,31 @@ export type Database = {
       is_ultimate_user: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      ai_agent:
+        | "perplexity"
+        | "gemini"
+        | "openai"
+        | "anthropic"
+        | "grok"
+        | "deepseek"
+        | "groq"
+        | "openrouter"
+      ai_run_status: "running" | "success" | "error" | "skipped"
+      ai_task_area:
+        | "a11y"
+        | "seo"
+        | "copy"
+        | "performance"
+        | "security"
+        | "i18n"
+        | "content"
+      ai_task_severity: "auto" | "review" | "blocked"
+      ai_task_status:
+        | "pending"
+        | "applied"
+        | "skipped"
+        | "failed"
+        | "needs_review"
       app_role: "admin" | "moderator" | "user"
       code_console_agent:
         | "user"
@@ -3116,6 +3271,34 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_agent: [
+        "perplexity",
+        "gemini",
+        "openai",
+        "anthropic",
+        "grok",
+        "deepseek",
+        "groq",
+        "openrouter",
+      ],
+      ai_run_status: ["running", "success", "error", "skipped"],
+      ai_task_area: [
+        "a11y",
+        "seo",
+        "copy",
+        "performance",
+        "security",
+        "i18n",
+        "content",
+      ],
+      ai_task_severity: ["auto", "review", "blocked"],
+      ai_task_status: [
+        "pending",
+        "applied",
+        "skipped",
+        "failed",
+        "needs_review",
+      ],
       app_role: ["admin", "moderator", "user"],
       code_console_agent: [
         "user",
