@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_edits: {
+        Row: {
+          agent_name: string
+          branch: string | null
+          bytes_written: number | null
+          commit_message: string | null
+          commit_sha: string | null
+          created_at: string
+          error_message: string | null
+          file_path: string | null
+          id: string
+          ip_address: string | null
+          operation: string
+          success: boolean
+        }
+        Insert: {
+          agent_name: string
+          branch?: string | null
+          bytes_written?: number | null
+          commit_message?: string | null
+          commit_sha?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_path?: string | null
+          id?: string
+          ip_address?: string | null
+          operation: string
+          success?: boolean
+        }
+        Update: {
+          agent_name?: string
+          branch?: string | null
+          bytes_written?: number | null
+          commit_message?: string | null
+          commit_sha?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_path?: string | null
+          id?: string
+          ip_address?: string | null
+          operation?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       agent_run_log: {
         Row: {
           agent_name: string
