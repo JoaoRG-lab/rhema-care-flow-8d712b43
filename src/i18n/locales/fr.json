@@ -234,5 +234,190 @@
     "created": "Créé avec succès.",
     "deleted": "Supprimé avec succès.",
     "updated": "Mis à jour avec succès."
+  },
+  "landingFull": {
+    "hero": {
+      "startBuilding": "Commencer",
+      "aiResearchEngine": "Moteur de Recherche IA",
+      "exploreKnowledge": "Explorer le Savoir",
+      "qLibrary": "Bibliothèque de Connaissances",
+      "qCalculators": "Calculatrices Cliniques",
+      "qRheumatology": "Portail de Rhumatologie",
+      "qUrv": "Blockchain URV"
+    },
+    "knowledge": {
+      "badge": "Une Nouvelle Ère du Savoir Médical",
+      "titlePre": "Le Premier",
+      "titleAccent": "Savoir Vivant",
+      "titleSub": "Écosystème pour la Rhumatologie",
+      "lead": "Pendant des décennies, le savoir clinique a été fragmenté entre PDF, revues, sites de sociétés et silos institutionnels.",
+      "leadStrong": "Nous changeons cela pour toujours.",
+      "problemLabel": "Le Problème Aujourd'hui",
+      "problemTitle": "Savoir Dispersé et Statique",
+      "problemItems": [
+        "Recommandations enterrées dans des PDF de 200 pages sur des dizaines de sites de sociétés",
+        "Les mises à jour prennent des années ; les cliniciens travaillent avec des recommandations obsolètes",
+        "Aucun moyen de comparer les approches ACR vs EULAR vs APLAR côte à côte",
+        "Perles cliniques perdues dans la pratique individuelle, jamais partagées mondialement"
+      ],
+      "solutionLabel": "Notre Révolution",
+      "solutionTitle": "Vivant, Unifié, en Évolution",
+      "solutionItems": [
+        {
+          "strong": "Une Plateforme :",
+          "text": "Toutes les sociétés, recommandations et protocoles — recherchables instantanément"
+        },
+        {
+          "strong": "Toujours à Jour :",
+          "text": "Mises à jour en temps réel à mesure que de nouvelles preuves émergent"
+        },
+        {
+          "strong": "Validé par des Experts :",
+          "text": "Approuvé par les sociétés avec une provenance transparente"
+        },
+        {
+          "strong": "Amélioré par IA :",
+          "text": "Réponses instantanées, comparaisons et aide à la décision clinique"
+        }
+      ],
+      "quote": "\"Imaginez poser n'importe quelle question clinique et obtenir la sagesse synthétisée d'ACR, EULAR, APLAR et plus de 50 sociétés de rhumatologie — en secondes, avec citations.\"",
+      "quoteFooterPre": "Ce n'est pas une base de données. C'est un",
+      "quoteFooterAccent": "organisme vivant de savoir",
+      "quoteFooterPost": "qui devient plus intelligent chaque jour.",
+      "cta": "Explorer la Révolution du Savoir"
+    },
+    "manifesto": {
+      "badge": "Notre Manifeste",
+      "titlePre": "Les Données de Santé Appartiennent aux",
+      "titleAccent": "Patients",
+      "p1": "Nous croyons en un futur où l'excellence clinique rencontre la souveraineté absolue des données. Où chaque accès est auditable, chaque consentement est cryptographiquement garanti, et aucune information personnellement identifiable ne touche jamais un registre immuable.",
+      "p2Pre": "UHS Health OS ne stocke que",
+      "p2Strong1": "des hashes et engagements",
+      "p2Mid": "on-chain. Les dossiers patients restent chiffrés off-chain, contrôlés par le consentement. La blockchain sert de",
+      "p2Strong2": "journal d'audit incorruptible",
+      "p2Post": "— rien de plus.",
+      "badges": [
+        "Conforme HIPAA",
+        "Prêt RGPD",
+        "Preuves à Divulgation Nulle"
+      ]
+    },
+    "featuresSec": {
+      "badge": "Capacités de la Plateforme",
+      "titlePre": "Conçu pour",
+      "titleAccent": "l'Excellence Clinique",
+      "lead": "Outils dédiés pour gérer les pathologies chroniques, les thérapies biologiques et les suivis complexes — tous avec une intégrité vérifiée par blockchain.",
+      "items": [
+        {
+          "title": "Architecture Privacy-First",
+          "description": "Zéro PHI on-chain. Seules les preuves cryptographiques et les consentements touchent la blockchain.",
+          "badge": "Cœur"
+        },
+        {
+          "title": "Piste d'Audit Blockchain",
+          "description": "Enregistrement immuable de chaque accès, consentement et mise à jour de score clinique sur Solana."
+        },
+        {
+          "title": "Score de Valeur Clinique",
+          "description": "Méthodologie URV : Résultats, Processus, Infrastructure, Évolution, Expérience."
+        },
+        {
+          "title": "Gestion du Consentement",
+          "description": "Accès contrôlé par le patient avec consentement révocable et permissions par finalité."
+        },
+        {
+          "title": "Insights Cliniques IA",
+          "description": "Analyse longitudinale et aide à la décision par IA respectueuse de la vie privée."
+        },
+        {
+          "title": "Référentiel de Savoir",
+          "description": "Recommandations, protocoles et perles cliniques curés des sociétés de rhumatologie du monde."
+        },
+        {
+          "title": "Moteur de Recherche IA",
+          "description": "Faites croître le savoir exponentiellement avec recherche, génération et vérification multi-étapes par IA.",
+          "badge": "Nouveau"
+        }
+      ]
+    },
+    "roadmap": {
+      "badge": "Roadmap Open Source",
+      "titlePre": "Conçu pour",
+      "titleAccent": "Évoluer",
+      "lead": "Suggestions de la communauté qui guident le développement. Chaque bloc est indépendant — contribuez où votre expertise est la plus forte.",
+      "mvpPhase": "Phase 1",
+      "mvpTitle": "Commencer par un MVP focalisé",
+      "mvpDesc": "Pour créer de l'élan, commencer par un noyau petit mais fonctionnel démontre la valeur et attire les contributeurs dès le début.",
+      "mvpItems": [
+        "Timeline centrée patient — registre longitudinal des événements",
+        "Entités centrales : rencontres, observations et médicaments",
+        "Interface simple pour visualiser la continuité dans le temps"
+      ],
+      "fhirLabel": "Interopérabilité",
+      "fhirTitle": "Alignement avec HL7 FHIR",
+      "fhirDescPre": "Alignement progressif avec les ressources",
+      "fhirDescMid": "— sans conformité totale dès le départ.",
+      "fhirItems": [
+        "Meilleure compatibilité à long terme",
+        "Onboarding plus facile pour contributeurs avec expérience santé",
+        "Plus grande crédibilité pour pilotes et intégrations"
+      ],
+      "consentLabel": "Sécurité",
+      "consentTitle": "Consentement et Auditabilité",
+      "consentDesc": "Les données de santé étant sensibles, le consentement et l'audit doivent être des fonctionnalités centrales — pas des ajouts ultérieurs.",
+      "consentItems": [
+        "Consentement granulaire et révocable par type de donnée et fournisseur",
+        "Permissions avec durée limitée (time-bound)",
+        "Journaux d'audit immuables pour tous les accès et modifications"
+      ],
+      "archLabel": "Architecture",
+      "archTitle": "Architecture Modulaire",
+      "archDesc": "Une approche par couches permet la scalabilité et laisse les contributeurs travailler indépendamment sur différents domaines.",
+      "archLayers": [
+        {
+          "label": "Couche API",
+          "desc": "REST / GraphQL"
+        },
+        {
+          "label": "Services Centraux",
+          "desc": "Timeline, Identité, Consentement"
+        },
+        {
+          "label": "Couche d'Interopérabilité",
+          "desc": "Adaptateurs FHIR"
+        },
+        {
+          "label": "Couche de Données",
+          "desc": "Structuré + Event Store"
+        },
+        {
+          "label": "Couche de Sécurité",
+          "desc": "Auth, Chiffrement, Audit"
+        }
+      ],
+      "ctaTitle": "Contribuer au Roadmap",
+      "ctaDesc": "Ces suggestions viennent de la communauté. Voulez-vous proposer une implémentation, contester une décision ou suggérer de nouvelles directions ? Ouvrez une Discussion sur GitHub.",
+      "ctaBtn": "Voir la Discussion sur GitHub"
+    },
+    "privacy": {
+      "titlePre": "Confidentialité par",
+      "titleAccent": "Conception",
+      "body": "UHS Health OS est un outil organisationnel, pas un dossier médical. Nous ne stockons jamais les noms de patients, documents, téléphones ou adresses. Utilisez vos propres codes patient — nous ne voyons jamais les identifiants réels."
+    },
+    "finalCta": {
+      "titlePre": "Rejoignez le Futur des",
+      "titleAccent": "Données de Santé",
+      "lead": "Que vous soyez clinicien cherchant de meilleurs flux, chercheur ayant besoin de données auditables ou patient voulant le contrôle — UHS Health OS est fait pour vous.",
+      "primary": "Commencer Gratuitement",
+      "alpha": "Rejoindre Alpha (Leaders)"
+    },
+    "footer": {
+      "tag": "Universal Health System",
+      "reumato": "Portail Reumato",
+      "knowledge": "Savoir",
+      "learn": "Éducation Patient",
+      "urv": "Chaîne URV",
+      "disclaimer": "Ceci est un outil organisationnel pour les professionnels de santé. Il ne constitue pas un dossier médical officiel. Aucune PHI/PII n'est stockée sur la blockchain."
+    }
   }
 }
