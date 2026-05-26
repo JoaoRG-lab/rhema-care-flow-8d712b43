@@ -38,8 +38,11 @@ const AGENT_META: Record<Exclude<Agent, "user" | "sentinel">, { label: string; i
   custom: { label: "Custom API", icon: KeyRound, hint: "Sua chave / endpoint OpenAI-compat." },
 };
 
+const ALLOWED_EMAIL = "joaooz123@gmail.com";
+
 export default function CodeConsole() {
   const { user } = useAuth();
+  const allowed = user?.email?.toLowerCase() === ALLOWED_EMAIL;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
