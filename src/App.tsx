@@ -195,6 +195,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                <CodeConsoleLauncher />
               </ActivityTracker>
             </PersonaProvider>
             </SpecialtyProvider>
