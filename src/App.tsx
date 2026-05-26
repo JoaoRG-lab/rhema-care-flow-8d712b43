@@ -73,6 +73,7 @@ const ProntuarioIntegrado = lazy(() => import("./pages/ProntuarioIntegrado"));
 const ResearchHub = lazy(() => import("./pages/ResearchHub"));
 const MirrorSettings = lazy(() => import("./pages/MirrorSettings"));
 const LoopDebug = lazy(() => import("./pages/LoopDebug"));
+const CodeConsole = lazy(() => import("./pages/CodeConsole"));
 const queryClient = new QueryClient();
 
  const PageLoader = () => (
