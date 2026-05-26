@@ -47,7 +47,10 @@
     "analytics": "Análises",
     "aiAssistant": "Assistente IA",
     "blockchain": "Blockchain",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "library": "Biblioteca",
+    "calculators": "Calculadoras",
+    "about": "Sobre"
   },
   "landing": {
     "hero": {
