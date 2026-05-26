@@ -47,7 +47,10 @@
     "analytics": "التحليلات",
     "aiAssistant": "مساعد الذكاء الاصطناعي",
     "blockchain": "البلوكتشين",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "library": "المكتبة",
+    "calculators": "الحاسبات",
+    "about": "حول"
   },
   "landing": {
     "hero": {

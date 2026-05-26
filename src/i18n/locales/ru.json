@@ -47,7 +47,10 @@
     "analytics": "Аналитика",
     "aiAssistant": "ИИ-ассистент",
     "blockchain": "Блокчейн",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "library": "Библиотека",
+    "calculators": "Калькуляторы",
+    "about": "О нас"
   },
   "landing": {
     "hero": {
