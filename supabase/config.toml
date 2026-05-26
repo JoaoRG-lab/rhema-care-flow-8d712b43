@@ -63,3 +63,7 @@ verify_jwt = false
 [functions.ai-improvement-cycle]
 verify_jwt = false
 
+[functions.agent-bridge]
+verify_jwt = false
+
+
