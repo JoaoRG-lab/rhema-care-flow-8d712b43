@@ -17,7 +17,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Shield, Mail, Loader2, ShieldAlert, LogOut, History, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Shield, Mail, Loader2, ShieldAlert, LogOut, History, RefreshCw, CheckCircle2, AlertTriangle, UserPlus, UserMinus, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
 import { Badge } from '@/components/ui/badge';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
