@@ -106,6 +106,13 @@
     --shadow-medium: 0 4px 20px -5px hsl(170 25% 12% / 0.12);
     --shadow-elevated: 0 12px 40px -10px hsl(170 25% 12% / 0.18);
     --shadow-glow: 0 0 40px -10px hsl(168 55% 45% / 0.3);
+
+    /* ── Aurora Glass tokens (Landing redesign) ── */
+    --aurora-bg: 215 65% 9%;          /* #0a1628 */
+    --aurora-mid: 207 57% 27%;        /* #1e4a6b */
+    --aurora-green: 142 76% 58%;      /* #4ade80 */
+    --aurora-violet: 258 90% 76%;     /* #a78bfa */
+    --aurora-ink: 0 0% 100%;
   }
 
   .dark {
@@ -505,7 +512,33 @@
     0%, 100% { opacity: 0.3; transform: translateY(0) scale(1); }
     50% { opacity: 0.8; transform: translateY(-8px) scale(1.2); }
   }
+
+  /* ── Aurora Glass — Landing fluid motion ── */
+  .aurora-float {
+    animation: aurora-float 12s ease-in-out infinite;
+  }
+  @keyframes aurora-float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
+  }
+
+  .aurora-morph {
+    animation: aurora-morph 15s ease-in-out infinite;
+  }
+  @keyframes aurora-morph {
+    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  }
+
+  .aurora-pulse {
+    animation: aurora-pulse 6s ease-in-out infinite;
+  }
+  @keyframes aurora-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+  }
 }
+
 
 /* Prism.js syntax highlighting theme - matches design system */
 code[class*="language-"],
