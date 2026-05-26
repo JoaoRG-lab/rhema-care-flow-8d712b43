@@ -75,6 +75,7 @@ const ResearchHub = lazy(() => import("./pages/ResearchHub"));
 const MirrorSettings = lazy(() => import("./pages/MirrorSettings"));
 const LoopDebug = lazy(() => import("./pages/LoopDebug"));
 const CodeConsole = lazy(() => import("./pages/CodeConsole"));
+const SandboxConsole = lazy(() => import("./pages/SandboxConsole"));
 const AiRedundancy = lazy(() => import("./pages/AiRedundancy"));
 const queryClient = new QueryClient();
 
@@ -163,6 +164,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
                     <Route path="/analytics" element={<ClinicianRoute><Analytics /></ClinicianRoute>} />
                     <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
                     <Route path="/code-console" element={<ProtectedRoute><CodeConsole /></ProtectedRoute>} />
+                    <Route path="/sandbox-console" element={<ProtectedRoute><SandboxConsole /></ProtectedRoute>} />
                     <Route path="/ai-redundancy" element={<ProtectedRoute><AiRedundancy /></ProtectedRoute>} />
                     <Route path="/blockchain" element={<ProtectedRoute><BlockchainRegistry /></ProtectedRoute>} />
                     <Route path="/urv" element={<UrvPage />} />
