@@ -128,7 +128,7 @@ export function AISiteAgentWidget({ className }: { className?: string }) {
                 {isRunning ? 'Running...' : 'Run Now'}
               </Button>
               <CollapsibleTrigger asChild>
-                <Button size="icon" variant="ghost">
+                <Button size="icon" variant="ghost" aria-label={isExpanded ? "Recolher painel do agente" : "Expandir painel do agente"}>
                   {isExpanded ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (

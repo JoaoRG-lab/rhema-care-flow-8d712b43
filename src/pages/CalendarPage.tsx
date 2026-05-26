@@ -158,15 +158,16 @@
              </p>
            </div>
            <div className="flex items-center gap-2">
-             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+             <Button variant="outline" size="icon" aria-label="Mês anterior" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                <ChevronLeft className="h-4 w-4" />
              </Button>
              <span className="font-medium min-w-[120px] md:min-w-[140px] text-center text-sm md:text-base">
                {format(currentMonth, isMobile ? 'MMM yyyy' : 'MMMM yyyy')}
              </span>
-             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+             <Button variant="outline" size="icon" aria-label="Próximo mês" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
                <ChevronRight className="h-4 w-4" />
              </Button>
+
            </div>
            </div>
  

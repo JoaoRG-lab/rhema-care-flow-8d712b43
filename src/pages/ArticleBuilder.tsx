@@ -80,7 +80,7 @@ export default function ArticleBuilder() {
 
   if (showPreview) {
     return (
-      <div className="h-screen flex flex-col">
+      <div className="h-dvh flex flex-col">
         <ManuscriptPreview
           sections={visibleSections}
           citationStyle={state.citationStyle}
@@ -98,7 +98,7 @@ export default function ArticleBuilder() {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="h-dvh flex flex-col bg-white">
       <ManuscriptTopBar
         state={state}
         progress={progress}
