@@ -160,6 +160,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
                     <Route path="/learn/pediatrics" element={<LearnPediatrics />} />
                     <Route path="/analytics" element={<ClinicianRoute><Analytics /></ClinicianRoute>} />
                     <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+                    <Route path="/code-console" element={<ProtectedRoute><CodeConsole /></ProtectedRoute>} />
                     <Route path="/blockchain" element={<ProtectedRoute><BlockchainRegistry /></ProtectedRoute>} />
                     <Route path="/urv" element={<UrvPage />} />
                     <Route path="/reumato" element={<ReumatoPortal />} />
