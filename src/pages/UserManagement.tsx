@@ -33,6 +33,37 @@ export default function UserManagement() {
   const [lastSentTo, setLastSentTo] = useState<string | null>(null);
   const [lastRevokedFor, setLastRevokedFor] = useState<string | null>(null);
 
+  // --- Role management state ---
+  type AppRole = 'admin' | 'moderator' | 'user';
+  type RoleRow = { id: string; user_id: string; role: AppRole; created_at: string; email: string | null };
+  const [roleEmail, setRoleEmail] = useState('');
+  const [roleValue, setRoleValue] = useState<AppRole>('admin');
+  const [roleBusy, setRoleBusy] = useState(false);
+  const [roleRows, setRoleRows] = useState<RoleRow[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  const loadRoles = useCallback(async () => {
+    setRolesLoading(true);
+    const { data, error } = await invokeEdgeFn<{ rows: RoleRow[] }>('admin-set-role', { action: 'list' });
+    if (error) toast.error(error);
+    else setRoleRows(data?.rows ?? []);
+    setRolesLoading(false);
+  }, []);
+
+  const handleRoleAction = async (action: 'grant' | 'revoke', emailArg?: string, roleArg?: AppRole) => {
+    const target = (emailArg ?? roleEmail).trim().toLowerCase();
+    const r = roleArg ?? roleValue;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) return toast.error('Email inválido');
+    setRoleBusy(true);
+    const { error } = await invokeEdgeFn('admin-set-role', { action, email: target, role: r });
+    if (error) toast.error(error);
+    else {
+      toast.success(action === 'grant' ? `Role "${r}" concedida para ${target}` : `Role "${r}" removida de ${target}`);
+      loadRoles();
+    }
+    setRoleBusy(false);
+  };
+
   type ResetAuditRow = {
     id: string;
     created_at: string;
