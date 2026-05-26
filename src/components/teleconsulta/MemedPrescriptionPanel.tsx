@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import { useMemedPrescription, type MemedPatient } from '@/hooks/useMemedPrescription';
+import { useMemedPrescription, type MemedPaciente } from '@/hooks/useMemedPrescription';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -35,7 +35,7 @@ export function MemedPrescriptionPanel({
     loading,
     error,
     tokenAuto,
-    setPatient,
+    setPaciente,
     showPrescription,
     setDoctorTokenManual,
   } = useMemedPrescription();
@@ -63,14 +63,14 @@ export function MemedPrescriptionPanel({
   // Quando o módulo estiver pronto e o token automático disponível, configura o paciente
   useEffect(() => {
     if (ready && tokenAuto && patientCode && !patientConfigured) {
-      const patient: MemedPatient = {
+      const patient: MemedPaciente = {
         nome: patientCode,
         idExterno: patientCardId,
       };
-      setPatient(patient);
+      setPaciente(patient);
       setPatientConfigured(true);
     }
-  }, [ready, tokenAuto, patientCode, patientCardId, patientConfigured, setPatient]);
+  }, [ready, tokenAuto, patientCode, patientCardId, patientConfigured, setPaciente]);
 
   const handleConfirmManualToken = () => {
     if (!manualToken.trim()) {
@@ -79,7 +79,7 @@ export function MemedPrescriptionPanel({
     }
     setDoctorTokenManual(manualToken.trim());
     if (patientCode) {
-      setPatient({ nome: patientCode, idExterno: patientCardId });
+      setPaciente({ nome: patientCode, idExterno: patientCardId });
       setPatientConfigured(true);
     }
     setShowManualInput(false);
