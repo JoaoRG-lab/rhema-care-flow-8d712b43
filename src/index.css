@@ -106,6 +106,13 @@
     --shadow-medium: 0 4px 20px -5px hsl(170 25% 12% / 0.12);
     --shadow-elevated: 0 12px 40px -10px hsl(170 25% 12% / 0.18);
     --shadow-glow: 0 0 40px -10px hsl(168 55% 45% / 0.3);
+
+    /* ── Aurora Glass tokens (Landing redesign) ── */
+    --aurora-bg: 215 65% 9%;          /* #0a1628 */
+    --aurora-mid: 207 57% 27%;        /* #1e4a6b */
+    --aurora-green: 142 76% 58%;      /* #4ade80 */
+    --aurora-violet: 258 90% 76%;     /* #a78bfa */
+    --aurora-ink: 0 0% 100%;
   }
 
   .dark {
