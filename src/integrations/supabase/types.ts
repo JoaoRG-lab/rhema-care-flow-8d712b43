@@ -363,6 +363,84 @@ export type Database = {
           },
         ]
       }
+      code_console_messages: {
+        Row: {
+          agent: Database["public"]["Enums"]["code_console_agent"]
+          citations: Json | null
+          content: string
+          created_at: string
+          destructive_warning: string | null
+          id: string
+          model: string | null
+          promoted_for_deploy: boolean
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          agent: Database["public"]["Enums"]["code_console_agent"]
+          citations?: Json | null
+          content: string
+          created_at?: string
+          destructive_warning?: string | null
+          id?: string
+          model?: string | null
+          promoted_for_deploy?: boolean
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          agent?: Database["public"]["Enums"]["code_console_agent"]
+          citations?: Json | null
+          content?: string
+          created_at?: string
+          destructive_warning?: string | null
+          id?: string
+          model?: string | null
+          promoted_for_deploy?: boolean
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_console_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "code_console_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_console_threads: {
+        Row: {
+          created_at: string
+          deploy_agent: Database["public"]["Enums"]["code_console_agent"] | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deploy_agent?:
+            | Database["public"]["Enums"]["code_console_agent"]
+            | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deploy_agent?:
+            | Database["public"]["Enums"]["code_console_agent"]
+            | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       consultation_sessions: {
         Row: {
           created_at: string
@@ -2889,6 +2967,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      code_console_agent:
+        | "user"
+        | "chatgpt"
+        | "codex"
+        | "perplexity"
+        | "custom"
+        | "sentinel"
       contribution_category:
         | "clinical_pearl"
         | "guideline_summary"
@@ -3032,6 +3117,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      code_console_agent: [
+        "user",
+        "chatgpt",
+        "codex",
+        "perplexity",
+        "custom",
+        "sentinel",
+      ],
       contribution_category: [
         "clinical_pearl",
         "guideline_summary",
