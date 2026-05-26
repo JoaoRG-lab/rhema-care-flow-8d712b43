@@ -94,8 +94,11 @@ export default function UserManagement() {
   }, []);
 
   useEffect(() => {
-    if (!roleLoading && isAdmin) loadHistory();
-  }, [roleLoading, isAdmin, loadHistory]);
+    if (!roleLoading && isAdmin) {
+      loadHistory();
+      loadRoles();
+    }
+  }, [roleLoading, isAdmin, loadHistory, loadRoles]);
 
   if (roleLoading) {
     return (
