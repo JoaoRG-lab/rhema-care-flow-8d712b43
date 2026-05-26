@@ -2,6 +2,11 @@
 
 Documentação histórica importada do snapshot público `JoaoRG-lab/rhema-care-flow@main` como **referência arquivada**.
 
+> **Docs vivos** (canônicos, adaptados à arquitetura atual):
+> - [`docs/SECURITY.md`](../SECURITY.md) — postura de segurança (promovido daqui)
+> - [`docs/GOVERNANCE.md`](../GOVERNANCE.md) — governança multi-agente (promovido daqui)
+> - [`docs/SUPABASE_SETUP.md`](../SUPABASE_SETUP.md), [`docs/STYLE_GUIDE.md`](../STYLE_GUIDE.md), [`docs/VERIFICATION.md`](../VERIFICATION.md)
+
 ## Status
 
 **Não-canônica.** A fonte da verdade viva é o projeto atual (UHS Health OS universal, 17 especialidades, blockchain Solana, AI Guardian, Hardware Custody, i18n 7 línguas, Memed, Sumsub, Manuscript Foundry, Peer Review, Epidemiological Matrix).
