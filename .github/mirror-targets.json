@@ -1,4 +1,5 @@
 {
-  "$schema": "Mirror targets for .github/workflows/mirror-to-repos.yml",
-  "targets": []
+  "primary_branch": "main",
+  "sandbox_branch": "agent-sandbox",
+  "note": "Para isolar edições de agentes externos, defina o secret GITHUB_BRANCH=agent-sandbox no Vault Supabase. A branch precisa existir no GitHub (git push -u origin agent-sandbox uma vez)."
 }

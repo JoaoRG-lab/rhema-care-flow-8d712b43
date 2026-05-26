@@ -1,0 +1,42 @@
+{
+  "name": "UHS Health OS — Agent Sandbox",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/deno:1": {},
+    "ghcr.io/devcontainers/features/rust:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "denoland.vscode-deno",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "deno.enable": true,
+        "deno.enablePaths": ["supabase/functions"],
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "secrets": {
+    "GITHUB_PAT": {
+      "description": "GitHub PAT com escopo repo — usado pelos MCP servers e pelo agent-bridge"
+    },
+    "AGENT_BRIDGE_TOKEN": {
+      "description": "Token compartilhado para chamar a edge function agent-bridge"
+    },
+    "SUPABASE_ACCESS_TOKEN": {
+      "description": "Token de acesso Supabase para o MCP read-only"
+    }
+  },
+  "forwardPorts": [5173, 54321],
+  "remoteEnv": {
+    "AGENT_BRIDGE_URL": "https://rqaqdhmdeyzyjglhxrne.supabase.co/functions/v1/agent-bridge"
+  }
+}
