@@ -10,6 +10,7 @@ import { SpecialtyProvider } from "@/contexts/SpecialtyContext";
 import { AccountTypeProvider, useAccountType } from "@/contexts/AccountTypeContext";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useSiteTracker } from "@/hooks/useSiteTracker";
+import CodeConsoleLauncher from "@/components/CodeConsoleLauncher";
 
 // Activity tracker wrapper component
 function ActivityTracker({ children }: { children: React.ReactNode }) {
@@ -194,6 +195,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                <CodeConsoleLauncher />
               </ActivityTracker>
             </PersonaProvider>
             </SpecialtyProvider>
