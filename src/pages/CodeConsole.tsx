@@ -38,8 +38,11 @@ const AGENT_META: Record<Exclude<Agent, "user" | "sentinel">, { label: string; i
   custom: { label: "Custom API", icon: KeyRound, hint: "Sua chave / endpoint OpenAI-compat." },
 };
 
+const ALLOWED_EMAIL = "joaooz123@gmail.com";
+
 export default function CodeConsole() {
   const { user } = useAuth();
+  const allowed = user?.email?.toLowerCase() === ALLOWED_EMAIL;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -51,7 +54,7 @@ export default function CodeConsole() {
 
   // Load threads
   useEffect(() => {
-    if (!user) return;
+    if (!user || !allowed) return;
     void (async () => {
       const { data, error } = await supabase
         .from("code_console_threads")
@@ -187,6 +190,28 @@ export default function CodeConsole() {
   function saveGithubUrl(v: string) {
     setGithubUrl(v);
     localStorage.setItem("cc.githubUrl", v);
+  }
+
+  if (!allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Acesso restrito
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>O Code Console multi-agente está habilitado apenas para a conta autorizada.</p>
+            <p>Faça login com <span className="font-mono text-foreground">{ALLOWED_EMAIL}</span> para continuar.</p>
+            {user?.email && (
+              <p className="pt-2">Sessão atual: <span className="font-mono">{user.email}</span></p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
