@@ -17,7 +17,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Shield, Mail, Loader2, ShieldAlert, LogOut, History, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Shield, Mail, Loader2, ShieldAlert, LogOut, History, RefreshCw, CheckCircle2, AlertTriangle, UserPlus, UserMinus, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
 import { Badge } from '@/components/ui/badge';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +32,37 @@ export default function UserManagement() {
   const [revoking, setRevoking] = useState(false);
   const [lastSentTo, setLastSentTo] = useState<string | null>(null);
   const [lastRevokedFor, setLastRevokedFor] = useState<string | null>(null);
+
+  // --- Role management state ---
+  type AppRole = 'admin' | 'moderator' | 'user';
+  type RoleRow = { id: string; user_id: string; role: AppRole; created_at: string; email: string | null };
+  const [roleEmail, setRoleEmail] = useState('');
+  const [roleValue, setRoleValue] = useState<AppRole>('admin');
+  const [roleBusy, setRoleBusy] = useState(false);
+  const [roleRows, setRoleRows] = useState<RoleRow[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  const loadRoles = useCallback(async () => {
+    setRolesLoading(true);
+    const { data, error } = await invokeEdgeFn<{ rows: RoleRow[] }>('admin-set-role', { action: 'list' });
+    if (error) toast.error(error);
+    else setRoleRows(data?.rows ?? []);
+    setRolesLoading(false);
+  }, []);
+
+  const handleRoleAction = async (action: 'grant' | 'revoke', emailArg?: string, roleArg?: AppRole) => {
+    const target = (emailArg ?? roleEmail).trim().toLowerCase();
+    const r = roleArg ?? roleValue;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) return toast.error('Email inválido');
+    setRoleBusy(true);
+    const { error } = await invokeEdgeFn('admin-set-role', { action, email: target, role: r });
+    if (error) toast.error(error);
+    else {
+      toast.success(action === 'grant' ? `Role "${r}" concedida para ${target}` : `Role "${r}" removida de ${target}`);
+      loadRoles();
+    }
+    setRoleBusy(false);
+  };
 
   type ResetAuditRow = {
     id: string;
@@ -61,8 +94,11 @@ export default function UserManagement() {
   }, []);
 
   useEffect(() => {
-    if (!roleLoading && isAdmin) loadHistory();
-  }, [roleLoading, isAdmin, loadHistory]);
+    if (!roleLoading && isAdmin) {
+      loadHistory();
+      loadRoles();
+    }
+  }, [roleLoading, isAdmin, loadHistory, loadRoles]);
 
   if (roleLoading) {
     return (
@@ -371,6 +407,94 @@ export default function UserManagement() {
                 })}
               </ul>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Gerenciar roles por email
+              </CardTitle>
+              <CardDescription>
+                Conceda ou remova roles (admin, moderator, user) para qualquer usuário
+                cadastrado, identificado pelo email. Ações são registradas no audit log.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadRoles} disabled={rolesLoading}>
+              {rolesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto_auto]">
+              <div className="space-y-1">
+                <Label htmlFor="role-email">Email do usuário</Label>
+                <Input
+                  id="role-email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={roleEmail}
+                  onChange={(e) => setRoleEmail(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Role</Label>
+                <Select value={roleValue} onValueChange={(v) => setRoleValue(v as AppRole)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">admin</SelectItem>
+                    <SelectItem value="moderator">moderator</SelectItem>
+                    <SelectItem value="user">user</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={() => handleRoleAction('grant')} disabled={roleBusy}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Conceder
+                </Button>
+              </div>
+              <div className="flex items-end">
+                <Button variant="outline" onClick={() => handleRoleAction('revoke')} disabled={roleBusy}>
+                  <UserMinus className="h-4 w-4 mr-2" />
+                  Remover
+                </Button>
+              </div>
+            </div>
+
+            <div className="border rounded-md divide-y">
+              {roleRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  {rolesLoading ? 'Carregando…' : 'Nenhuma role atribuída ainda.'}
+                </p>
+              ) : (
+                roleRows.map((row) => (
+                  <div key={row.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{row.email ?? row.user_id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(row.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={row.role === 'admin' ? 'default' : 'secondary'}>
+                        {row.role}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => row.email && handleRoleAction('revoke', row.email, row.role)}
+                        disabled={roleBusy || !row.email}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
