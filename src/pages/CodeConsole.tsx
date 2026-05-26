@@ -192,6 +192,28 @@ export default function CodeConsole() {
     localStorage.setItem("cc.githubUrl", v);
   }
 
+  if (!allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Acesso restrito
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>O Code Console multi-agente está habilitado apenas para a conta autorizada.</p>
+            <p>Faça login com <span className="font-mono text-foreground">{ALLOWED_EMAIL}</span> para continuar.</p>
+            {user?.email && (
+              <p className="pt-2">Sessão atual: <span className="font-mono">{user.email}</span></p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-4 lg:p-6">
