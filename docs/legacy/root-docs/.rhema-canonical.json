@@ -1,0 +1,36 @@
+{
+  "platform": "UHS Health OS / Rhema Care Flow",
+  "version": "2.0.0",
+  "updatedAt": "2026-05-20",
+  "canonical": {
+    "githubOrg": "JoaoRG-lab",
+    "githubRepo": "rhema-care-flow",
+    "githubBranch": "main",
+    "framework": "vite",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "installCommand": "npm install"
+  },
+  "deprecated": [
+    "rhema-care-flow-e98622f0",
+    "rhema-care-flow-65f281f9",
+    "medconsult-os-starter",
+    "medconsult-os-starter-p2hz",
+    "medconsult-os-starter-1ldc",
+    "medconsult-os-starter-52l4"
+  ],
+  "supabase": {
+    "projectUrl": "https://rfsaxstpfpigrjyiochi.supabase.co",
+    "envVar": "VITE_SUPABASE_URL",
+    "keyEnvVar": "VITE_SUPABASE_PUBLISHABLE_KEY"
+  },
+  "stack": {
+    "frontend": ["React 18", "TypeScript 5", "Vite 5", "Tailwind CSS 3", "shadcn/ui"],
+    "routing": ["React Router v6", "TanStack Query v5"],
+    "backend": ["Supabase PostgreSQL", "Supabase Auth", "Supabase Edge Functions", "Supabase Storage"],
+    "blockchain": ["Solana", "Anchor (Rust)", "URV Privacy Module"]
+  },
+  "personas": ["clinician", "academic", "patient"],
+  "specialties": 14,
+  "note": "Single source of truth for all deploy targets. Lovable, Vercel, Supabase and GitHub Actions must all reference JoaoRG-lab/rhema-care-flow branch main."
+}
