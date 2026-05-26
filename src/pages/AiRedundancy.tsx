@@ -63,7 +63,7 @@ export default function AiRedundancy() {
     else { toast.success("Ciclo disparado"); await load(); }
   }
 
-  async function updateTask(id: string, status: string) {
+  async function updateTask(id: string, status: "applied" | "skipped") {
     const { error } = await supabase.from("ai_improvement_tasks")
       .update({ status, applied_at: status === "applied" ? new Date().toISOString() : null })
       .eq("id", id);
