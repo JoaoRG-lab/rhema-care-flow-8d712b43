@@ -1,130 +1,122 @@
-# Plano de Migração — JoaoRG-lab/rhema-care-flow → projeto atual
+# Plano: A11y → Cron Multi-IA → Memed
 
-## Observação importante sobre o repositório de origem
+## Frente 1 — Acessibilidade (app inteiro)
 
-Não consigo acessar `https://github.com/JoaoRG-lab/rhema-care-flow` diretamente daqui (sem credenciais Git nem fetch autenticado para esse repo privado/org). Este plano define **a estratégia e a classificação por categoria de arquivo**, para que você cole os arquivos do GitHub em lotes e eu aplique a regra correta a cada um, sem quebrar o app.
+**Auditoria automatizada + correções em lote.**
 
-Se o repo for público, posso tentar buscar via fetch — me confirme e eu testo. Caso contrário, seguimos pelo fluxo de colagem por lotes descrito abaixo.
+1. Rodar varredura estática (ripgrep) sobre `src/` para os padrões da skill `accessibility`:
+   - `<img>` sem `alt`
+   - `<Button size="icon">` / `IconButton` sem `aria-label`
+   - `onClick` em `<div>`/`<span>` sem `role`+`tabIndex`+keyboard handler
+   - `h-screen` (trocar por `h-dvh`)
+   - `text-gray-*`, `text-white`, `bg-black` (trocar por tokens semânticos)
+   - `<input>` sem `<label>` associado nem `aria-label`
+   - `autoFocus` fora de Dialog/Sheet
+   - múltiplos `<main>` por rota
+2. Gerar relatório agrupado por severidade (Critical / Warning / Info), com arquivo:linha.
+3. Aplicar correções em ondas:
+   - Onda A — Critical (alt, aria-label, semantic roles)
+   - Onda B — Warning (h-dvh, headings, focus-visible)
+   - Onda C — Info (lang, decorative alt="", lists semânticas)
+4. Adicionar `lang="pt-BR"` em `index.html` (se ainda não estiver) e garantir um único `<main>` no layout raiz.
 
----
-
-## 1. Princípios da migração (não-negociáveis)
-
-1. **Nunca sobrescrever arquivos auto-gerados**: `src/integrations/supabase/client.ts`, `src/integrations/supabase/types.ts`, `.env`, `supabase/config.toml` (chave `project_id`).
-2. **Nunca expor secrets**: se vier algo com chave/token no código colado, substituo por `import.meta.env.*` ou movo para secret do backend.
-3. **Preservar arquitetura já criada** no projeto atual (carrossel de codificação, rotas, contexts, hooks, edge functions, componentes de specialty, blockchain, etc).
-4. **Edits cirúrgicos** (search-replace) em vez de rewrites, sempre que possível.
-5. **Sem mudanças destrutivas sem justificativa** explícita registrada na resposta.
-
----
-
-## 2. Classificação por categoria de arquivo
-
-Cada arquivo que você colar entra em uma destas 5 buckets:
-
-### A. MANTER (não tocar no atual, ignorar versão do GitHub)
-- `src/integrations/supabase/client.ts`
-- `src/integrations/supabase/types.ts`
-- `.env`, `.env.example` (a menos que falte uma chave nova)
-- `supabase/config.toml` (apenas adicionar blocos `[functions.*]` se necessário; nunca trocar `project_id`)
-- `package-lock.json` / `bun.lockb`
-- `src/main.tsx` (já configurado para Lovable)
-
-### B. MERGE (combinar atual + GitHub, preservando o que já existe)
-- `src/App.tsx` — adicionar rotas que faltam, manter as existentes
-- `src/index.css` / `tailwind.config.ts` — unir design tokens; nunca sobrescrever paleta Teal/Sage/Forest/Gold já definida
-- `src/i18n/locales/*.json` — merge profundo de chaves
-- `src/contexts/*.tsx` — comparar API pública; preservar campos já consumidos
-- `src/config/specialties.ts` — unir specialties dos dois lados
-- `README.md`, `CONTRIBUTING.md`, `SYNC.md`, `docs/*.md`
-
-### C. SUBSTITUIR (versão do GitHub é a canônica, atual está defasada)
-- Componentes/páginas que existem nos dois mas a versão do GitHub é mais nova → substituir após eu confirmar diff
-- Edge functions que existem nos dois → substituir somente após validar que assinatura (`req`/`res`, secrets usados) é compatível
-- `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/*`, `.github/mirror-targets.json`
-
-### D. ADICIONAR (não existe no atual, criar novo)
-- Arquivos do GitHub sem equivalente local → criar exatamente no mesmo path
-- Novas migrations `supabase/migrations/*.sql` → adicionar via tool de migration (nunca escrever direto)
-- Novas edge functions → criar em `supabase/functions/<nome>/index.ts`
-
-### E. REJEITAR (não trazer para cá)
-- Arquivos com secrets hardcoded
-- Configurações que conflitam com Lovable Cloud (ex: outro `SUPABASE_URL`)
-- Workflows GitHub Actions que tentem mexer em deploy do Lovable
-- `node_modules/`, `dist/`, `build/`, `.next/`
+Entregável: PR único com fixes + comentário-resumo no chat.
 
 ---
 
-## 3. Ordem recomendada de colagem (lotes)
+## Frente 2 — Scheduler Multi-IA (rotação + auto-implementação)
 
-Para minimizar quebra, cole nesta ordem:
+**Objetivo:** a cada 5 min uma IA diferente audita o site, propõe melhorias **e** aplica as seguras automaticamente; as arriscadas viram tarefas para revisão.
 
-```text
-Lote 1 — Fundação
-  package.json, tsconfig*.json, vite.config.ts, tailwind.config.ts,
-  postcss.config.js, eslint.config.js, components.json, index.html
+### 2.1 Esquema de banco
 
-Lote 2 — Design system
-  src/index.css, src/App.css, docs/design-tokens.json
+Tabela `ai_improvement_runs`:
+- `id`, `agent` (`perplexity|gemini|openai|anthropic|grok|deepseek|groq|openrouter`)
+- `started_at`, `finished_at`, `status` (`running|success|error|skipped`)
+- `audit_summary` (text), `proposals` (jsonb), `applied_count`, `queued_count`, `error`
 
-Lote 3 — Roteamento e contexts
-  src/App.tsx, src/main.tsx (apenas comparar),
-  src/contexts/*.tsx
+Tabela `ai_improvement_tasks`:
+- `id`, `run_id`, `agent`, `severity` (`auto|review|blocked`)
+- `area` (`a11y|seo|copy|performance|security|i18n|content`)
+- `title`, `rationale`, `patch` (jsonb — `{file, find, replace}` ou `{file, content}`)
+- `status` (`pending|applied|skipped|failed|needs_review`)
+- `applied_at`, `error`
+- RLS: leitura para admin, escrita só edge function (service role)
 
-Lote 4 — Config e tipos
-  src/config/*.ts, src/types/*.ts, src/i18n/**
+### 2.2 Edge Function `ai-improvement-cycle`
 
-Lote 5 — Hooks e libs
-  src/hooks/*.ts, src/lib/*.ts
+- Lê fila de agentes (round-robin pela `agent` do último run).
+- Carrega contexto resumido: lista de rotas, últimos audit logs, `site_visits` recentes, último relatório a11y.
+- Chama a IA da vez (cada provider numa branch — tudo via secrets já existentes: `OPENAI_API_KEY`, `PERPLEXITY_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `GROKKEY`, `DEEPSEEK_API_KEY`, `groq`, `openrouter`).
+- IA retorna JSON estrito com `proposals[]` (severity, area, patch).
+- **Sentinel filter** (idêntico ao já feito no Code Console): bloqueia patches com `rm -rf`, `DROP`, mudanças em `supabase/migrations`, `src/integrations/supabase/*`, `.env`, workflows, `client.ts`, `types.ts`.
+- `severity=auto` + patch text-only em `src/content/**` ou `public/llms.txt` ou microcopy em componentes whitelisted → aplica via Supabase Storage de patches (não temos GitHub aqui, então **as alterações aplicadas viram registros**, não commits — o "deploy" continua sendo via Lovable).
+- Demais propostas viram `needs_review` na fila.
 
-Lote 6 — Componentes (por subpasta)
-  src/components/layout/**, depois auth, brand, dashboard, clinical,
-  scores, education, knowledge, manuscript, prescriptions, teleconsulta,
-  blockchain, ai, verification, billing, calendar, outreach, quality-test
+> Observação importante: o sandbox Lovable não permite que uma edge function modifique o código-fonte do repositório em runtime. Então "auto-implementar" significa: registrar a proposta + persistir em tabelas de conteúdo dinâmico (`content_overrides`, `llms_txt_overrides`, `seo_meta_overrides`) que o frontend lê em tempo de execução. Mudanças estruturais ficam como tarefa de revisão para o Code Console aplicar.
 
-Lote 7 — Páginas
-  src/pages/*.tsx
+### 2.3 Agendador `pg_cron`
 
-Lote 8 — Backend
-  supabase/functions/**, supabase/migrations/** (via tool de migration)
+`*/5 * * * *` chamando a edge function via `net.http_post` (padrão já usado no projeto).
 
-Lote 9 — Anchor / Solana
-  anchor/**, src/idl/*.json, src/lib/solana.ts
+### 2.4 Dashboard `/ai-redundancy`
 
-Lote 10 — Infra / docs
-  .github/**, docs/**, *.md, vercel.json, deploy-anchor.sh
-```
+Página admin com:
+- Última execução por agente
+- Tabela de propostas (filtro por status/area/severity)
+- Botão "Aplicar" / "Rejeitar" para itens `needs_review`
+- Heatmap de quem produziu o quê
 
-A cada lote eu:
-1. Identifico bucket (A–E) por arquivo.
-2. Mostro o que vai mudar **antes** de editar.
-3. Aplico edits cirúrgicos.
-4. Sigo para o próximo lote só após sua confirmação.
+### 2.5 Conteúdo dinâmico aplicável
 
----
-
-## 4. Riscos e mitigações
-
-| Risco | Mitigação |
-|---|---|
-| Quebra de rotas existentes | Merge em `App.tsx`, nunca substituir cego |
-| Conflito de schema Supabase | Migrations vão pela tool de migration, com revisão |
-| Perda de design tokens da paleta Teal/Sage/Forest/Gold | `tailwind.config.ts` e `index.css` em modo MERGE |
-| Tipos `Database` desalinhados | `types.ts` é regenerado automaticamente — nunca tocar |
-| Edge functions com secrets diferentes | Listar secrets esperados antes de substituir |
-| Versões de deps incompatíveis | `package.json` em MERGE; instalo deps faltantes uma a uma |
-| Migrations duplicadas | Comparar timestamps; pular migrations já aplicadas |
-| Quebra do carrossel de codificação | Páginas/components do carrossel ficam em bucket A (não tocar) até você marcar explicitamente |
+Criar tabelas `content_overrides`, `seo_meta_overrides`, `llms_txt_overrides` (key/value, com history) — e hooks no frontend que mesclam esses overrides quando existem.
 
 ---
 
-## 5. O que eu preciso de você agora
+## Frente 3 — Memed (integração completa segundo docs oficiais)
 
-Responda com **um destes**:
+Conforme `mem://integrations/memed`: contratos oficiais, chaves de **homologação**, endpoint `/sinapse-prescricao`, `setPaciente` com campos PT-BR, evento `core:moduleInit`.
 
-1. **"Lote 1"** + cole os arquivos do Lote 1 do repo GitHub (um por mensagem ou em bloco, com o path antes de cada).
-2. **"Repo público, pode buscar"** — tento fetch direto e classifico os arquivos automaticamente.
-3. **"Comece por X"** — se quiser priorizar uma área específica (ex: só `src/App.tsx` e rotas).
+### 3.1 Pré-requisito (bloqueia a frente 3)
 
-Sem isso, não posso começar a editar — preciso ver o código de origem para classificar cada arquivo na bucket certa.
+Precisamos das credenciais oficiais Memed:
+- `MEMED_API_KEY` (homologação)
+- `MEMED_SECRET_KEY` (homologação)
+- `MEMED_ENV` (`homologacao` | `producao`)
+- URL oficial da Sinapse (`https://sandbox.api.memed.com.br` em homologação)
+
+Sem essas chaves o módulo carrega mas o `setPaciente` falha com 401. Vou solicitar via `add_secret` antes de codar.
+
+### 3.2 Implementação
+
+- **Edge Function `memed-token`**: emite token de prescritor assinado (server-side), recebe `crm`, `uf`, `cpf_prescritor`, devolve `token` JWT do Memed.
+- **Componente `MemedPrescription.tsx`**:
+  - Carrega script oficial `https://sandbox.memed.com.br/modulos/plataforma.sinapse-prescricao/build/sinapse-prescricao.min.js`
+  - Escuta `core:moduleInit` antes de chamar `MdSinapsePrescricao.event.add`
+  - Chama `MdHub.command.send('plataforma.prescricao', 'setPaciente', { ... })` com campos PT-BR (`idExterno`, `nome`, `cpf`, `data_nascimento`, `endereco`, `cidade`, `telefone`)
+  - Botão `MdHub.module.show('plataforma.prescricao')`
+  - Listener `prescricaoSalva` → persiste em `prescriptions` (tabela nova) e fecha modal
+- **Tabela `prescriptions`**: `id`, `user_id` (médico), `patient_card_id`, `memed_prescription_id`, `pdf_url`, `created_at`, RLS por médico.
+- **Página `/patient/:id/prescribe`**: render do componente + binding do paciente atual.
+- **Documentação**: `docs/integrations/memed.md` com fluxo completo, troubleshooting (CSP, blind‑signing, callbacks), e checklist homologação→produção.
+
+### 3.3 Hardening
+
+- CSP: liberar `sandbox.memed.com.br` e `api.memed.com.br` em `vercel.json`/meta CSP.
+- Sanitizar todos campos antes de mandar (CPF só dígitos, telefone E.164, data ISO).
+- Logar emissões em `audit_events` (imutável) sem PHI — só `event_type=PRESCRIPTION_ISSUED`, `subject_did_hash`, `actor_did`.
+
+---
+
+## Ordem de execução
+
+1. **A11y** — varredura + correções (sem novas dependências, baixo risco).
+2. **Cron multi-IA** — migration de tabelas + edge function + dashboard + pg_cron.
+3. **Memed** — solicito secrets, depois edge function + componente + tabela + CSP.
+
+## Riscos / decisões pendentes
+
+- "Auto‑implementar" no Lovable só funciona para conteúdo dinâmico (tabelas/overrides). Mudanças de código continuam exigindo o agente humano/Code Console — vou deixar isso explícito no dashboard.
+- Memed exige credenciais reais para sair do "carrega mas não prescreve". Se você não tem ainda, a frente 3 fica como skeleton funcional + doc, pronto para ativar quando as chaves chegarem.
+
+Confirma e eu começo pela Frente 1.
