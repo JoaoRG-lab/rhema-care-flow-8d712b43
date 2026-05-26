@@ -234,5 +234,190 @@
     "created": "创建成功。",
     "deleted": "删除成功。",
     "updated": "更新成功。"
+  },
+  "landingFull": {
+    "hero": {
+      "startBuilding": "开始使用",
+      "aiResearchEngine": "AI 研究引擎",
+      "exploreKnowledge": "探索知识",
+      "qLibrary": "知识库",
+      "qCalculators": "临床计算器",
+      "qRheumatology": "风湿病门户",
+      "qUrv": "URV 区块链"
+    },
+    "knowledge": {
+      "badge": "医学知识的新纪元",
+      "titlePre": "全球首个",
+      "titleAccent": "活的知识",
+      "titleSub": "风湿病学生态系统",
+      "lead": "数十年来,临床知识分散在 PDF、期刊、学会网站和机构孤岛中。",
+      "leadStrong": "我们正在永久改变这一切。",
+      "problemLabel": "今日的问题",
+      "problemTitle": "知识分散且静态",
+      "problemItems": [
+        "指南被埋在数十个学会网站的 200 页 PDF 中",
+        "更新需要数年;临床医生使用过时的建议",
+        "无法并排比较 ACR、EULAR、APLAR 的方法",
+        "临床精华在个人实践中流失,从未全球共享"
+      ],
+      "solutionLabel": "我们的革命",
+      "solutionTitle": "活的、统一的、不断进化",
+      "solutionItems": [
+        {
+          "strong": "一个平台:",
+          "text": "所有学会、指南和方案 — 即时可搜"
+        },
+        {
+          "strong": "始终最新:",
+          "text": "随着新证据出现实时更新"
+        },
+        {
+          "strong": "专家精选:",
+          "text": "学会认可且来源透明"
+        },
+        {
+          "strong": "AI 增强:",
+          "text": "即时回答、对比和临床决策支持"
+        }
+      ],
+      "quote": "\"想象一下,提出任何临床问题,即可在几秒内获得 ACR、EULAR、APLAR 和 50+ 风湿学会综合的智慧 — 附带引用。\"",
+      "quoteFooterPre": "这不是数据库。它是一个",
+      "quoteFooterAccent": "活的知识有机体",
+      "quoteFooterPost": "每天都变得更智能。",
+      "cta": "探索知识革命"
+    },
+    "manifesto": {
+      "badge": "我们的宣言",
+      "titlePre": "健康数据属于",
+      "titleAccent": "患者",
+      "p1": "我们相信一个临床卓越与绝对数据主权相遇的未来。每次访问可审计,每项同意以密码学方式强制执行,任何个人身份信息永远不会出现在不可变的账本上。",
+      "p2Pre": "UHS Health OS 仅存储",
+      "p2Strong1": "哈希和承诺",
+      "p2Mid": "在链上。患者记录在链下保持加密,由患者同意控制。区块链作为",
+      "p2Strong2": "不可篡改的审计日志",
+      "p2Post": "— 仅此而已。",
+      "badges": [
+        "HIPAA 合规",
+        "GDPR 就绪",
+        "零知识证明"
+      ]
+    },
+    "featuresSec": {
+      "badge": "平台能力",
+      "titlePre": "为",
+      "titleAccent": "临床卓越",
+      "lead": "专为管理慢性病、生物制剂治疗和复杂随访打造的工具 — 全部具备区块链验证的完整性。",
+      "items": [
+        {
+          "title": "隐私优先架构",
+          "description": "链上零 PHI。仅密码学证明和同意记录上链。",
+          "badge": "核心"
+        },
+        {
+          "title": "区块链审计轨迹",
+          "description": "在 Solana 上对每次访问、同意和临床评分更新的不可篡改记录。"
+        },
+        {
+          "title": "临床价值评分",
+          "description": "URV 方法论:结果、过程、基础设施、演进、体验。"
+        },
+        {
+          "title": "同意管理",
+          "description": "由患者控制的数据访问,可撤销同意及按目的的权限。"
+        },
+        {
+          "title": "AI 临床洞察",
+          "description": "基于隐私保护 AI 的纵向分析与决策支持。"
+        },
+        {
+          "title": "知识仓库",
+          "description": "全球风湿学会的精选指南、方案和临床精华。"
+        },
+        {
+          "title": "AI 研究引擎",
+          "description": "通过 AI 研究、生成和多步骤验证以指数级扩展知识。",
+          "badge": "新"
+        }
+      ]
+    },
+    "roadmap": {
+      "badge": "开源路线图",
+      "titlePre": "为",
+      "titleAccent": "演进",
+      "lead": "社区建议引导开发。每个模块独立 — 在你最擅长的领域贡献。",
+      "mvpPhase": "第一阶段",
+      "mvpTitle": "从聚焦的 MVP 开始",
+      "mvpDesc": "为了形成势头,从一个小但可用的核心开始,可以展示价值并从第一天起吸引贡献者。",
+      "mvpItems": [
+        "以患者为中心的时间线 — 纵向事件记录",
+        "核心实体:就诊、观察和药物",
+        "简单界面以可视化时间上的连续性"
+      ],
+      "fhirLabel": "互操作性",
+      "fhirTitle": "与 HL7 FHIR 对齐",
+      "fhirDescPre": "与资源",
+      "fhirDescMid": "渐进对齐 — 无需一开始就完全符合。",
+      "fhirItems": [
+        "更好的长期兼容性",
+        "拥有医疗经验的贡献者更易上手",
+        "为试点和集成带来更高的可信度"
+      ],
+      "consentLabel": "安全",
+      "consentTitle": "同意与可审计性",
+      "consentDesc": "由于健康数据敏感,同意和审计必须是核心功能 — 而不是后期补充。",
+      "consentItems": [
+        "按数据类型和提供方的细粒度可撤销同意",
+        "带时效的权限",
+        "所有访问和更改的不可篡改审计日志"
+      ],
+      "archLabel": "架构",
+      "archTitle": "模块化架构",
+      "archDesc": "分层方法支持可扩展性,并让贡献者在不同领域独立工作。",
+      "archLayers": [
+        {
+          "label": "API 层",
+          "desc": "REST / GraphQL"
+        },
+        {
+          "label": "核心服务",
+          "desc": "时间线、身份、同意"
+        },
+        {
+          "label": "互操作层",
+          "desc": "FHIR 适配器"
+        },
+        {
+          "label": "数据层",
+          "desc": "结构化 + 事件存储"
+        },
+        {
+          "label": "安全层",
+          "desc": "认证、加密、审计"
+        }
+      ],
+      "ctaTitle": "为路线图贡献",
+      "ctaDesc": "这些建议来自社区。想提议一个实现、质疑一个决定或建议新方向?在 GitHub 上开启 Discussion。",
+      "ctaBtn": "在 GitHub 上查看讨论"
+    },
+    "privacy": {
+      "titlePre": "隐私源于",
+      "titleAccent": "设计",
+      "body": "UHS Health OS 是一个组织工具,不是病历系统。我们从不存储患者姓名、证件号、电话或地址。请使用您自己的患者编码 — 我们永远不会看到真实身份。"
+    },
+    "finalCta": {
+      "titlePre": "加入未来的",
+      "titleAccent": "健康数据",
+      "lead": "无论您是寻求更好工作流的临床医生、需要可审计数据的研究者,还是希望掌握控制权的患者 — UHS Health OS 为您而建。",
+      "primary": "免费开始",
+      "alpha": "加入 Alpha(领袖)"
+    },
+    "footer": {
+      "tag": "Universal Health System",
+      "reumato": "Reumato 门户",
+      "knowledge": "知识",
+      "learn": "患者教育",
+      "urv": "URV 链",
+      "disclaimer": "这是面向医疗专业人员的组织工具,不构成正式病历系统。区块链上不存储任何 PHI/PII。"
+    }
   }
 }
