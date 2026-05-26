@@ -54,7 +54,7 @@ export default function CodeConsole() {
 
   // Load threads
   useEffect(() => {
-    if (!user) return;
+    if (!user || !allowed) return;
     void (async () => {
       const { data, error } = await supabase
         .from("code_console_threads")
