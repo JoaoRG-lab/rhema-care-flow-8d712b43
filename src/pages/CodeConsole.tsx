@@ -31,11 +31,64 @@ interface Message {
   created_at: string;
 }
 
-const AGENT_META: Record<Exclude<Agent, "user" | "sentinel">, { label: string; icon: typeof Bot; hint: string }> = {
-  chatgpt: { label: "ChatGPT", icon: Sparkles, hint: "GPT-5 — generalista" },
-  codex: { label: "Codex", icon: Code2, hint: "GPT-5.4 — código profundo" },
-  perplexity: { label: "Perplexity", icon: Search, hint: "Sonar Pro — com fontes" },
-  custom: { label: "Custom API", icon: KeyRound, hint: "Sua chave / endpoint OpenAI-compat." },
+const AGENT_META: Record<
+  Exclude<Agent, "user" | "sentinel">,
+  {
+    label: string;
+    icon: typeof Bot;
+    hint: string;
+    scope: string;
+    paths: string[];
+    starters: string[];
+  }
+> = {
+  chatgpt: {
+    label: "ChatGPT",
+    icon: Sparkles,
+    hint: "GPT-5 — generalista, novos componentes e Edge Functions",
+    scope: "Novos componentes React, Edge Functions, integrações Supabase",
+    paths: ["src/components/**", "src/pages/**", "supabase/functions/**", "src/hooks/**"],
+    starters: [
+      "Crie um componente React em src/components/<area>/<Nome>.tsx que ...",
+      "Implemente uma Edge Function em supabase/functions/<nome>/index.ts que ...",
+    ],
+  },
+  codex: {
+    label: "Codex",
+    icon: Code2,
+    hint: "GPT-5.4 — refator profundo, tipos completos, testes",
+    scope: "Refatoração TS, tipagem estrita, testes Vitest, acessibilidade",
+    paths: ["src/lib/**", "src/hooks/**", "src/**/__tests__/**", "src/types/**"],
+    starters: [
+      "Refatore src/lib/<arquivo>.ts extraindo ... e adicione testes em __tests__/",
+      "Adicione tipos estritos e testes Vitest cobrindo edge cases para ...",
+    ],
+  },
+  perplexity: {
+    label: "Perplexity",
+    icon: Search,
+    hint: "Sonar Pro — pesquisa clínica com fontes (ACR/EULAR/OARSI)",
+    scope: "Calculadoras clínicas, scores, biblioteca médica, citações com DOI",
+    paths: [
+      "src/lib/calculators.ts",
+      "src/components/scores/**",
+      "src/pages/Scores.tsx",
+      "src/pages/KnowledgeLibrary.tsx",
+      "supabase/functions/ai-research-engine/index.ts",
+    ],
+    starters: [
+      "Pesquise a diretriz ACR/EULAR mais recente sobre ... e cite fontes (DOI/PubMed)",
+      "Implemente o score clínico ... em src/lib/calculators.ts com referência validada",
+    ],
+  },
+  custom: {
+    label: "Custom API",
+    icon: KeyRound,
+    hint: "Sua chave / endpoint OpenAI-compat.",
+    scope: "Endpoint próprio — escopo livre",
+    paths: ["(livre)"],
+    starters: ["Use o endpoint customizado para ..."],
+  },
 };
 
 const ALLOWED_EMAIL = "joaooz123@gmail.com";
@@ -349,6 +402,38 @@ export default function CodeConsole() {
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col gap-3">
+              {/* Trilha do agente — sinaliza escopo + caminhos + prompts-modelo */}
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px]">Trilha</Badge>
+                  <span className="font-medium text-foreground">{AGENT_META[agent].label}</span>
+                  <span className="text-muted-foreground">— {AGENT_META[agent].scope}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {AGENT_META[agent].paths.map((p) => (
+                    <code
+                      key={p}
+                      className="rounded bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground border border-border"
+                    >
+                      {p}
+                    </code>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {AGENT_META[agent].starters.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setPrompt(s)}
+                      className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                      title="Inserir como prompt"
+                    >
+                      ▸ {s.length > 70 ? s.slice(0, 70) + "…" : s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div ref={scrollRef} className="flex-1 overflow-y-auto pr-1 max-h-[55vh] space-y-4">
                 {messages.length === 0 && (
                   <div className="text-center py-12 text-muted-foreground text-sm">
