@@ -185,6 +185,33 @@ export default function CodeConsole() {
     setThreads((t) => t.map((x) => (x.id === activeId ? { ...x, deploy_agent: target.agent } : x)));
   }
 
+  async function deployMessage(messageId: string, dryRun = false) {
+    if (!dryRun && !confirm("Fazer commit direto no GitHub (dispara deploy ao site)?")) return;
+    const tid = toast.loading(dryRun ? "Verificando arquivos…" : "Fazendo deploy…");
+    const { data, error } = await supabase.functions.invoke("code-console-deploy", {
+      body: { messageId, dryRun },
+    });
+    toast.dismiss(tid);
+    if (error) return toast.error(error.message);
+    if (data?.error) return toast.error(data.error);
+    if (dryRun) {
+      toast.success(`${data.files.length} arquivo(s) detectado(s): ${data.files.map((f: { path: string }) => f.path).join(", ")}`);
+      return;
+    }
+    const fails = (data.results ?? []).filter((r: { error?: string }) => r.error);
+    if (fails.length) {
+      toast.error(`Deploy parcial: ${data.committed}/${data.total}. Falhas: ${fails.map((f: { path: string; error?: string }) => `${f.path} (${f.error})`).join("; ")}`);
+    } else {
+      toast.success(`Deploy enviado: ${data.committed} arquivo(s) commitados em ${data.branch}.`);
+    }
+    const { data: refreshed } = await supabase
+      .from("code_console_messages")
+      .select("*")
+      .eq("thread_id", activeId!)
+      .order("created_at", { ascending: true });
+    if (refreshed) setMessages(refreshed as Message[]);
+  }
+
   const activeThread = useMemo(() => threads.find((t) => t.id === activeId) ?? null, [threads, activeId]);
 
   function saveGithubUrl(v: string) {
