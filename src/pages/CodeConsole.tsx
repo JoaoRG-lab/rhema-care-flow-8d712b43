@@ -389,9 +389,15 @@ export default function CodeConsole() {
                         </div>
                       )}
                       {!isUser && (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button size="sm" variant="ghost" onClick={() => promote(m.id)}>
-                            <Rocket className="mr-1 h-3 w-3" /> Promover p/ deploy
+                            <Rocket className="mr-1 h-3 w-3" /> Promover
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => void deployMessage(m.id, true)}>
+                            Pré-visualizar arquivos
+                          </Button>
+                          <Button size="sm" variant="default" onClick={() => void deployMessage(m.id, false)}>
+                            <Rocket className="mr-1 h-3 w-3" /> Deploy ao site
                           </Button>
                           <Button
                             size="sm"
