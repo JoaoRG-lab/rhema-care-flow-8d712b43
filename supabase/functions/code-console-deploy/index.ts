@@ -17,7 +17,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ALLOWED_EMAIL = "joaooz123@gmail.com";
 const GITHUB_PAT = Deno.env.get("GITHUB_PAT")!;
-const GITHUB_REPO = Deno.env.get("GITHUB_REPO")!;
+const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "JoaoRG-lab/rhema-care-flow-8d712b43";
 const GITHUB_BRANCH = Deno.env.get("GITHUB_BRANCH") || "main";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
