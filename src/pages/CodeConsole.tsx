@@ -31,11 +31,64 @@ interface Message {
   created_at: string;
 }
 
-const AGENT_META: Record<Exclude<Agent, "user" | "sentinel">, { label: string; icon: typeof Bot; hint: string }> = {
-  chatgpt: { label: "ChatGPT", icon: Sparkles, hint: "GPT-5 — generalista" },
-  codex: { label: "Codex", icon: Code2, hint: "GPT-5.4 — código profundo" },
-  perplexity: { label: "Perplexity", icon: Search, hint: "Sonar Pro — com fontes" },
-  custom: { label: "Custom API", icon: KeyRound, hint: "Sua chave / endpoint OpenAI-compat." },
+const AGENT_META: Record<
+  Exclude<Agent, "user" | "sentinel">,
+  {
+    label: string;
+    icon: typeof Bot;
+    hint: string;
+    scope: string;
+    paths: string[];
+    starters: string[];
+  }
+> = {
+  chatgpt: {
+    label: "ChatGPT",
+    icon: Sparkles,
+    hint: "GPT-5 — generalista, novos componentes e Edge Functions",
+    scope: "Novos componentes React, Edge Functions, integrações Supabase",
+    paths: ["src/components/**", "src/pages/**", "supabase/functions/**", "src/hooks/**"],
+    starters: [
+      "Crie um componente React em src/components/<area>/<Nome>.tsx que ...",
+      "Implemente uma Edge Function em supabase/functions/<nome>/index.ts que ...",
+    ],
+  },
+  codex: {
+    label: "Codex",
+    icon: Code2,
+    hint: "GPT-5.4 — refator profundo, tipos completos, testes",
+    scope: "Refatoração TS, tipagem estrita, testes Vitest, acessibilidade",
+    paths: ["src/lib/**", "src/hooks/**", "src/**/__tests__/**", "src/types/**"],
+    starters: [
+      "Refatore src/lib/<arquivo>.ts extraindo ... e adicione testes em __tests__/",
+      "Adicione tipos estritos e testes Vitest cobrindo edge cases para ...",
+    ],
+  },
+  perplexity: {
+    label: "Perplexity",
+    icon: Search,
+    hint: "Sonar Pro — pesquisa clínica com fontes (ACR/EULAR/OARSI)",
+    scope: "Calculadoras clínicas, scores, biblioteca médica, citações com DOI",
+    paths: [
+      "src/lib/calculators.ts",
+      "src/components/scores/**",
+      "src/pages/Scores.tsx",
+      "src/pages/KnowledgeLibrary.tsx",
+      "supabase/functions/ai-research-engine/index.ts",
+    ],
+    starters: [
+      "Pesquise a diretriz ACR/EULAR mais recente sobre ... e cite fontes (DOI/PubMed)",
+      "Implemente o score clínico ... em src/lib/calculators.ts com referência validada",
+    ],
+  },
+  custom: {
+    label: "Custom API",
+    icon: KeyRound,
+    hint: "Sua chave / endpoint OpenAI-compat.",
+    scope: "Endpoint próprio — escopo livre",
+    paths: ["(livre)"],
+    starters: ["Use o endpoint customizado para ..."],
+  },
 };
 
 const ALLOWED_EMAIL = "joaooz123@gmail.com";
