@@ -111,6 +111,18 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Unauthorized");
     }
 
+    const [{ data: profile }, { data: adminRole }] = await Promise.all([
+      supabase.from("profiles").select("verification_tier").eq("user_id", user.id).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle(),
+    ]);
+
+    if (profile?.verification_tier !== "ultimate" && !adminRole) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { category } = (await req.json()) as ResearchRequest;
 
     const queries: { category: string; query: string; orgType: string }[] = [];
