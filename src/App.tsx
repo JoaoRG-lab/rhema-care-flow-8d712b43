@@ -18,29 +18,42 @@ function ActivityTracker({ children }: { children: React.ReactNode }) {
   useSiteTracker();
   return <>{children}</>;
 }
- // Lazy load pages for code splitting
- const Landing = lazy(() => import("./pages/Landing"));
- const Login = lazy(() => import("./pages/Login"));
- const Signup = lazy(() => import("./pages/Signup"));
- const Dashboard = lazy(() => import("./pages/Dashboard"));
- const Patients = lazy(() => import("./pages/Patients"));
- const Scores = lazy(() => import("./pages/Scores"));
- const Monitoring = lazy(() => import("./pages/Monitoring"));
- const Infusions = lazy(() => import("./pages/Infusions"));
- const CalendarPage = lazy(() => import("./pages/CalendarPage"));
- const Tasks = lazy(() => import("./pages/Tasks"));
- const Focus = lazy(() => import("./pages/Focus"));
- const Settings = lazy(() => import("./pages/Settings"));
- const SettingsCredits = lazy(() => import("./pages/SettingsCredits"));
- const NotFound = lazy(() => import("./pages/NotFound"));
- const PatientDetail = lazy(() => import("./pages/PatientDetail"));
+
+// QueryClient with proper configuration to avoid excessive refetches
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10,   // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Lazy load pages for code splitting
+const Landing = lazy(() => import("./pages/Landing"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Patients = lazy(() => import("./pages/Patients"));
+const Scores = lazy(() => import("./pages/Scores"));
+const Monitoring = lazy(() => import("./pages/Monitoring"));
+const Infusions = lazy(() => import("./pages/Infusions"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const Focus = lazy(() => import("./pages/Focus"));
+const Settings = lazy(() => import("./pages/Settings"));
+const SettingsCredits = lazy(() => import("./pages/SettingsCredits"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PatientDetail = lazy(() => import("./pages/PatientDetail"));
 const StyleGuide = lazy(() => import("./pages/StyleGuide"));
 const VerificationRequest = lazy(() => import("./pages/VerificationRequest"));
- const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
- const AcademicWorkspace = lazy(() => import("./pages/AcademicWorkspace"));
- const PatientPortal = lazy(() => import("./pages/PatientPortal"));
+const AcademicWorkspace = lazy(() => import("./pages/AcademicWorkspace"));
+const PatientPortal = lazy(() => import("./pages/PatientPortal"));
 const Education = lazy(() => import("./pages/Education"));
 const KnowledgeLibrary = lazy(() => import("./pages/KnowledgeLibrary"));
 const PatientEducationLibrary = lazy(() => import("./pages/PatientEducationLibrary"));
@@ -77,15 +90,14 @@ const LoopDebug = lazy(() => import("./pages/LoopDebug"));
 const CodeConsole = lazy(() => import("./pages/CodeConsole"));
 const SandboxConsole = lazy(() => import("./pages/SandboxConsole"));
 const AiRedundancy = lazy(() => import("./pages/AiRedundancy"));
-const queryClient = new QueryClient();
 
- const PageLoader = () => (
-   <div className="min-h-screen flex items-center justify-center">
-     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-   </div>
- );
- 
- function ProtectedRoute({ children }: { children: React.ReactNode }) {
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  </div>
+);
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
@@ -120,92 +132,95 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   if (!accountType) return <Navigate to="/onboarding" replace />;
   return <Navigate to={accountType === 'patient' ? '/patient-portal' : '/dashboard'} replace />;
 }
- 
- const App = () => (
-   <QueryClientProvider client={queryClient}>
-     <TooltipProvider>
-       <Toaster />
-       <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AccountTypeProvider>
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <AccountTypeProvider>
             <SpecialtyProvider>
-            <PersonaProvider>
-              <ActivityTracker>
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
-                    <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-                    <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
-                    <Route path="/onboarding" element={<ProtectedRoute><AccountTypeSelect /></ProtectedRoute>} />
-                    <Route path="/dashboard" element={<ClinicianRoute><Dashboard /></ClinicianRoute>} />
-                    <Route path="/patients" element={<ClinicianRoute><Patients /></ClinicianRoute>} />
-                    <Route path="/patients/:id" element={<ClinicianRoute><PatientDetail /></ClinicianRoute>} />
-                    <Route path="/scores" element={<Scores />} />
-                    <Route path="/monitoring" element={<ClinicianRoute><Monitoring /></ClinicianRoute>} />
-                    <Route path="/infusions" element={<ClinicianRoute><Infusions /></ClinicianRoute>} />
-                    <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-                    <Route path="/tasks" element={<ClinicianRoute><Tasks /></ClinicianRoute>} />
-                    <Route path="/focus" element={<ClinicianRoute><Focus /></ClinicianRoute>} />
-                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                    <Route path="/settings/credits" element={<ProtectedRoute><SettingsCredits /></ProtectedRoute>} />
-                    <Route path="/style-guide" element={<StyleGuide />} />
-                    <Route path="/verification-request" element={<ProtectedRoute><VerificationRequest /></ProtectedRoute>} />
-                    <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-                    <Route path="/auth/callback" element={<AuthCallback />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/academic" element={<ClinicianRoute><AcademicWorkspace /></ClinicianRoute>} />
-                    <Route path="/patient-portal" element={<PatientRoute><PatientPortal /></PatientRoute>} />
-                    <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
-                    <Route path="/knowledge" element={<ProtectedRoute><KnowledgeLibrary /></ProtectedRoute>} />
-                    <Route path="/learn" element={<PatientEducationLibrary />} />
-                    <Route path="/learn/pediatrics" element={<LearnPediatrics />} />
-                    <Route path="/analytics" element={<ClinicianRoute><Analytics /></ClinicianRoute>} />
-                    <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
-                    <Route path="/code-console" element={<ProtectedRoute><CodeConsole /></ProtectedRoute>} />
-                    <Route path="/sandbox-console" element={<ProtectedRoute><SandboxConsole /></ProtectedRoute>} />
-                    <Route path="/ai-redundancy" element={<ProtectedRoute><AiRedundancy /></ProtectedRoute>} />
-                    <Route path="/blockchain" element={<ProtectedRoute><BlockchainRegistry /></ProtectedRoute>} />
-                    <Route path="/urv" element={<UrvPage />} />
-                    <Route path="/reumato" element={<ReumatoPortal />} />
-                    <Route path="/pediatria" element={<PediatriaPortal />} />
-                    <Route path="/ginecologia" element={<GinecologiaPortal />} />
-                    <Route path="/obstetrics" element={<ObstetriciaPortal />} />
-                    <Route path="/gineco-obstetricia" element={<Navigate to="/ginecologia" replace />} />
-                    <Route path="/obstetricia" element={<Navigate to="/ginecologia" replace />} />
-                    <Route path="/especialidades" element={<SpecialtyPortal />} />
-                    <Route path="/specialty/:specialtyId" element={<SpecialtyPortal />} />
-                    <Route path="/ai-research" element={<ProtectedRoute><AIResearch /></ProtectedRoute>} />
-                    <Route path="/outreach" element={<ProtectedRoute><OutreachCRM /></ProtectedRoute>} />
-                    <Route path="/guardian" element={<ProtectedRoute><GuardianAgent /></ProtectedRoute>} />
-                    <Route path="/quality-test" element={<QualityTest />} />
-                    <Route path="/chain-demo" element={<SolanaChainDemo />} />
-                    <Route path="/tell-us" element={<TellUs />} />
-                    <Route path="/article-builder" element={<ArticleBuilder />} />
-                    <Route path="/epi-matrix" element={<ProtectedRoute><EpidemiologicalMatrix /></ProtectedRoute>} />
-                    <Route path="/about" element={<AboutManifest />} />
-                    <Route path="/site-analytics" element={<ProtectedRoute><SiteAnalytics /></ProtectedRoute>} />
-                    <Route path="/case-studies" element={<CaseStudies />} />
-                    <Route path="/admin/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-                    <Route path="/admin/billing" element={<ProtectedRoute><AdminBilling /></ProtectedRoute>} />
-                    <Route path="/teleconsulta" element={<ClinicianRoute><Teleconsulta /></ClinicianRoute>} />
-                    <Route path="/prontuario" element={<ProtectedRoute><ProntuarioIntegrado /></ProtectedRoute>} />
-                    <Route path="/research-hub" element={<ProtectedRoute><ResearchHub /></ProtectedRoute>} />
-                    <Route path="/settings/mirror" element={<ProtectedRoute><MirrorSettings /></ProtectedRoute>} />
-                    <Route path="/debug/loops" element={<LoopDebug />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-                <CodeConsoleLauncher />
-              </ActivityTracker>
-            </PersonaProvider>
+              <PersonaProvider>
+                <ActivityTracker>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+                      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                      <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+                      <Route path="/onboarding" element={<ProtectedRoute><AccountTypeSelect /></ProtectedRoute>} />
+                      <Route path="/dashboard" element={<ClinicianRoute><Dashboard /></ClinicianRoute>} />
+                      <Route path="/patients" element={<ClinicianRoute><Patients /></ClinicianRoute>} />
+                      <Route path="/patients/:id" element={<ClinicianRoute><PatientDetail /></ClinicianRoute>} />
+                      {/* FIX: /scores now requires authentication */}
+                      <Route path="/scores" element={<ProtectedRoute><Scores /></ProtectedRoute>} />
+                      <Route path="/monitoring" element={<ClinicianRoute><Monitoring /></ClinicianRoute>} />
+                      <Route path="/infusions" element={<ClinicianRoute><Infusions /></ClinicianRoute>} />
+                      <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+                      <Route path="/tasks" element={<ClinicianRoute><Tasks /></ClinicianRoute>} />
+                      <Route path="/focus" element={<ClinicianRoute><Focus /></ClinicianRoute>} />
+                      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                      <Route path="/settings/credits" element={<ProtectedRoute><SettingsCredits /></ProtectedRoute>} />
+                      <Route path="/style-guide" element={<StyleGuide />} />
+                      <Route path="/verification-request" element={<ProtectedRoute><VerificationRequest /></ProtectedRoute>} />
+                      <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+                      <Route path="/auth/callback" element={<AuthCallback />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/academic" element={<ClinicianRoute><AcademicWorkspace /></ClinicianRoute>} />
+                      <Route path="/patient-portal" element={<PatientRoute><PatientPortal /></PatientRoute>} />
+                      <Route path="/education" element={<ProtectedRoute><Education /></ProtectedRoute>} />
+                      <Route path="/knowledge" element={<ProtectedRoute><KnowledgeLibrary /></ProtectedRoute>} />
+                      <Route path="/learn" element={<PatientEducationLibrary />} />
+                      <Route path="/learn/pediatrics" element={<LearnPediatrics />} />
+                      <Route path="/analytics" element={<ClinicianRoute><Analytics /></ClinicianRoute>} />
+                      <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+                      <Route path="/code-console" element={<ProtectedRoute><CodeConsole /></ProtectedRoute>} />
+                      <Route path="/sandbox-console" element={<ProtectedRoute><SandboxConsole /></ProtectedRoute>} />
+                      <Route path="/ai-redundancy" element={<ProtectedRoute><AiRedundancy /></ProtectedRoute>} />
+                      <Route path="/blockchain" element={<ProtectedRoute><BlockchainRegistry /></ProtectedRoute>} />
+                      <Route path="/urv" element={<UrvPage />} />
+                      <Route path="/reumato" element={<ReumatoPortal />} />
+                      <Route path="/pediatria" element={<PediatriaPortal />} />
+                      <Route path="/ginecologia" element={<GinecologiaPortal />} />
+                      <Route path="/obstetrics" element={<ObstetriciaPortal />} />
+                      <Route path="/gineco-obstetricia" element={<Navigate to="/ginecologia" replace />} />
+                      <Route path="/obstetricia" element={<Navigate to="/ginecologia" replace />} />
+                      <Route path="/especialidades" element={<SpecialtyPortal />} />
+                      <Route path="/specialty/:specialtyId" element={<SpecialtyPortal />} />
+                      <Route path="/ai-research" element={<ProtectedRoute><AIResearch /></ProtectedRoute>} />
+                      <Route path="/outreach" element={<ProtectedRoute><OutreachCRM /></ProtectedRoute>} />
+                      <Route path="/guardian" element={<ProtectedRoute><GuardianAgent /></ProtectedRoute>} />
+                      {/* FIX: debug/quality routes now require authentication */}
+                      <Route path="/quality-test" element={<ProtectedRoute><QualityTest /></ProtectedRoute>} />
+                      <Route path="/chain-demo" element={<SolanaChainDemo />} />
+                      <Route path="/tell-us" element={<TellUs />} />
+                      <Route path="/article-builder" element={<ArticleBuilder />} />
+                      <Route path="/epi-matrix" element={<ProtectedRoute><EpidemiologicalMatrix /></ProtectedRoute>} />
+                      <Route path="/about" element={<AboutManifest />} />
+                      <Route path="/site-analytics" element={<ProtectedRoute><SiteAnalytics /></ProtectedRoute>} />
+                      <Route path="/case-studies" element={<CaseStudies />} />
+                      <Route path="/admin/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+                      <Route path="/admin/billing" element={<ProtectedRoute><AdminBilling /></ProtectedRoute>} />
+                      <Route path="/teleconsulta" element={<ClinicianRoute><Teleconsulta /></ClinicianRoute>} />
+                      <Route path="/prontuario" element={<ProtectedRoute><ProntuarioIntegrado /></ProtectedRoute>} />
+                      <Route path="/research-hub" element={<ProtectedRoute><ResearchHub /></ProtectedRoute>} />
+                      <Route path="/settings/mirror" element={<ProtectedRoute><MirrorSettings /></ProtectedRoute>} />
+                      {/* FIX: debug route now requires authentication */}
+                      <Route path="/debug/loops" element={<ProtectedRoute><LoopDebug /></ProtectedRoute>} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                  <CodeConsoleLauncher />
+                </ActivityTracker>
+              </PersonaProvider>
             </SpecialtyProvider>
-            </AccountTypeProvider>
-          </AuthProvider>
-        </BrowserRouter>
-     </TooltipProvider>
-   </QueryClientProvider>
- );
- 
- export default App;
+          </AccountTypeProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;
