@@ -146,7 +146,14 @@ Deno.serve(async (req) => {
   }
 
   // build short context
-  const { data: routes } = await supa.rpc("noop").catch(() => ({ data: null }));
+  // PostgrestBuilder não é uma Promise real (sem .catch). Envolvemos manualmente.
+  let routes: unknown = null;
+  try {
+    const r = await supa.rpc("noop");
+    routes = r?.data ?? null;
+  } catch {
+    routes = null;
+  }
   const prompt = `Audit UHS Health OS (rheumatology + multi-specialty clinical platform).
 Existing public routes: /, /learn, /scores, /landing, /about.
 Last 3 audit summaries: ignore for now.

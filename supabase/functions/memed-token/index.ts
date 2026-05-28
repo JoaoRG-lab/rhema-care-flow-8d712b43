@@ -28,6 +28,17 @@ serve(async (req) => {
   }
 
   try {
+    // Se as credenciais do parceiro Memed não estão configuradas,
+    // respondemos 200 sem token — o frontend aciona o fallback manual.
+    if (!MEMED_API_KEY || !MEMED_SECRET_KEY) {
+      return new Response(JSON.stringify({
+        token: null,
+        scriptUrl: MEMED_SCRIPT_URL,
+        manual: true,
+        reason: 'MEMED_API_KEY/MEMED_SECRET_KEY ausentes — use token manual do médico.',
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // Autenticar o usuário Supabase
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -51,10 +62,12 @@ serve(async (req) => {
       .maybeSingle()
 
     if (!profile) {
-      return new Response(JSON.stringify({ error: 'Perfil não encontrado' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return new Response(JSON.stringify({
+        token: null,
+        scriptUrl: MEMED_SCRIPT_URL,
+        manual: true,
+        reason: 'Perfil do médico não encontrado.',
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // Verificar se já temos memed_user_id salvo para este médico

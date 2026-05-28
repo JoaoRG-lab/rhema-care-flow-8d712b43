@@ -155,11 +155,14 @@ export function useMemedPrescription(): MemedHookReturn {
           const res = await supabase.functions.invoke('memed-token', {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
-          if (!res.error && res.data?.token) {
-            token = res.data.token as string;
-            scriptUrl = (res.data.scriptUrl as string) ?? MEMED_SCRIPT_DEFAULT;
-          } else {
-            console.warn('[Memed] Token automático indisponível, fallback manual ativado');
+          if (!res.error && res.data) {
+            if (res.data.token) token = res.data.token as string;
+            if (res.data.scriptUrl) scriptUrl = res.data.scriptUrl as string;
+            if (!token && res.data.reason) {
+              console.info('[Memed] Token automático indisponível:', res.data.reason);
+            }
+          } else if (res.error) {
+            console.warn('[Memed] memed-token falhou:', res.error.message ?? res.error);
           }
         }
 
