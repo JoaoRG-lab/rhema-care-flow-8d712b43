@@ -1,4 +1,4 @@
- import { useEffect, useState } from 'react';
+ import { useEffect, useState, type ReactNode } from 'react';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@
  import { Badge } from '@/components/ui/badge';
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/contexts/AuthContext';
- import { Shield, Plus, Check, Clock, AlertTriangle } from 'lucide-react';
+ import { Shield, Plus, Check, Clock, AlertTriangle, CalendarCheck2 } from 'lucide-react';
  import { format, isBefore } from 'date-fns';
  import { toast } from 'sonner';
  import { EVENT_TYPES } from '@/config/clinical';
@@ -97,14 +97,19 @@
      );
    }
  
-   return (
-     <div className="space-y-4">
-       <div className="flex items-center justify-between">
-         <h3 className="font-semibold flex items-center gap-2">
-           <Shield className="h-4 w-4 text-primary" />
-           Safety Monitoring
-         </h3>
-         <Dialog open={isOpen} onOpenChange={setIsOpen}>
+	 return (
+	   <div className="space-y-4">
+	     <div className="flex items-start justify-between gap-3 flex-wrap">
+	       <div className="space-y-1">
+	         <h3 className="font-semibold flex items-center gap-2">
+	           <Shield className="h-4 w-4 text-primary" />
+	           Safety Monitoring
+	         </h3>
+	         <p className="text-xs text-muted-foreground">
+	           Alertas clínicos, exames e rastreios com priorização por vencimento
+	         </p>
+	       </div>
+	       <Dialog open={isOpen} onOpenChange={setIsOpen}>
            <DialogTrigger asChild>
              <Button size="sm" variant="outline" className="gap-1">
                <Plus className="h-3 w-3" />
@@ -151,7 +156,28 @@
                <Button type="submit" className="w-full">Add Event</Button>
              </form>
            </DialogContent>
-         </Dialog>
+	         </Dialog>
+	       </div>
+
+       <div className="grid gap-3 sm:grid-cols-3">
+         <MonitoringMetric
+           icon={<AlertTriangle className="h-4 w-4" />}
+           label="Vencidos"
+           value={overdueEvents.length}
+           tone="danger"
+         />
+         <MonitoringMetric
+           icon={<Clock className="h-4 w-4" />}
+           label="Próximos"
+           value={upcomingEvents.length}
+           tone="info"
+         />
+         <MonitoringMetric
+           icon={<CalendarCheck2 className="h-4 w-4" />}
+           label="Concluídos"
+           value={completedEvents.length}
+           tone="success"
+         />
        </div>
  
        {events.length === 0 ? (
@@ -176,16 +202,16 @@
                <CardContent className="py-2">
                  <div className="space-y-2">
                    {overdueEvents.map((event) => (
-                     <div key={event.id} className="flex items-center justify-between p-2 bg-destructive/5 rounded">
-                       <div>
-                         <p className="text-sm font-medium">{event.event_type}</p>
+	                     <div key={event.id} className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+	                       <div>
+	                         <p className="text-sm font-medium">{event.event_type}</p>
                          <p className="text-xs text-muted-foreground">
                            Due: {format(new Date(event.due_date), 'MMM d, yyyy')}
                          </p>
                        </div>
-                       <Button size="sm" variant="ghost" onClick={() => markComplete(event.id)}>
-                         <Check className="h-4 w-4" />
-                       </Button>
+	                       <Button size="sm" variant="ghost" onClick={() => markComplete(event.id)} aria-label={`Marcar ${event.event_type} como concluído`}>
+	                         <Check className="h-4 w-4" />
+	                       </Button>
                      </div>
                    ))}
                  </div>
@@ -205,16 +231,16 @@
                <CardContent className="py-2">
                  <div className="space-y-2">
                    {upcomingEvents.map((event) => (
-                     <div key={event.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                       <div>
-                         <p className="text-sm font-medium">{event.event_type}</p>
+	                     <div key={event.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3">
+	                       <div>
+	                         <p className="text-sm font-medium">{event.event_type}</p>
                          <p className="text-xs text-muted-foreground">
                            Due: {format(new Date(event.due_date), 'MMM d, yyyy')}
                          </p>
                        </div>
-                       <Button size="sm" variant="ghost" onClick={() => markComplete(event.id)}>
-                         <Check className="h-4 w-4" />
-                       </Button>
+	                       <Button size="sm" variant="ghost" onClick={() => markComplete(event.id)} aria-label={`Marcar ${event.event_type} como concluído`}>
+	                         <Check className="h-4 w-4" />
+	                       </Button>
                      </div>
                    ))}
                  </div>
@@ -234,7 +260,7 @@
                <CardContent className="py-2">
                  <div className="space-y-2">
                    {completedEvents.slice(0, 5).map((event) => (
-                     <div key={event.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+	                     <div key={event.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
                        <div>
                          <p className="text-sm font-medium">{event.event_type}</p>
                          <p className="text-xs text-muted-foreground">
@@ -250,6 +276,31 @@
            )}
          </div>
        )}
+	     </div>
+	   );
+	 }
+
+ function MonitoringMetric({ icon, label, value, tone }: {
+   icon: ReactNode;
+   label: string;
+   value: number;
+   tone: 'danger' | 'info' | 'success';
+ }) {
+   const toneClass = {
+     danger: 'border-destructive/25 bg-destructive/5 text-destructive',
+     info: 'border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300',
+     success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300',
+   }[tone];
+
+   return (
+     <div className={`flex items-center justify-between rounded-lg border px-3 py-2.5 ${toneClass}`}>
+       <div className="flex items-center gap-2 min-w-0">
+         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background/70">
+           {icon}
+         </span>
+         <span className="truncate text-sm font-medium">{label}</span>
+       </div>
+       <span className="tabular-nums text-lg font-semibold text-foreground">{value}</span>
      </div>
    );
  }
