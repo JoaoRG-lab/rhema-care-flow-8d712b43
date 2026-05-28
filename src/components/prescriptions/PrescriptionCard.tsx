@@ -46,6 +46,12 @@ export function PrescriptionCard({ rx, patientCode, onSign, onCancel, onDelete, 
   const debugEnabled = isPrescriptionDebugEnabled();
   const cfg = STATUS_CONFIG[rx.status];
   const Icon = cfg.icon;
+  const statusChrome = {
+    draft: 'border-l-amber-400 bg-amber-50/40 dark:bg-amber-950/10',
+    signed: 'border-l-primary bg-primary/5',
+    dispensed: 'border-l-green-500 bg-green-50/50 dark:bg-green-950/10',
+    cancelled: 'border-l-destructive bg-destructive/5',
+  }[rx.status];
 
   const handleDownloadPdf = () => {
     try {
@@ -58,17 +64,17 @@ export function PrescriptionCard({ rx, patientCode, onSign, onCancel, onDelete, 
 
   return (
     <>
-      <Card className="overflow-hidden transition-shadow hover:shadow-md">
+      <Card className={cn('overflow-hidden border-l-4 transition-shadow hover:shadow-md', statusChrome)}>
         <CardContent className="p-0">
           {/* Header row */}
           <div className="flex items-start justify-between px-4 py-3 gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10', cfg.color)}>
+              <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/80 shadow-sm', cfg.color)}>
                 <Icon className="h-4 w-4" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-sm">
+                  <span className="font-semibold text-sm">
                     {rx.items?.[0]?.drug ?? 'Prescrição'}
                     {rx.items?.length > 1 && <span className="text-muted-foreground ml-1">+{rx.items.length - 1}</span>}
                   </span>
@@ -85,6 +91,21 @@ export function PrescriptionCard({ rx, patientCode, onSign, onCancel, onDelete, 
                     Assinado por {rx.signed_by_name} ({rx.signed_by_crm})
                   </p>
                 )}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {(rx.items ?? []).slice(0, 3).map((item, i) => (
+                    <span
+                      key={`${item.drug}-${i}`}
+                      className="rounded-md border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] text-muted-foreground"
+                    >
+                      {item.drug}
+                    </span>
+                  ))}
+                  {(rx.items ?? []).length > 3 && (
+                    <span className="rounded-md border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] text-muted-foreground">
+                      +{(rx.items ?? []).length - 3}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
