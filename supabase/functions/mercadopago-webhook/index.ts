@@ -6,14 +6,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-signature, x-request-id",
 };
 
+async function verifyMercadoPagoSignature(req: Request, paymentId: string, secret: string): Promise<boolean> {
+  const signature = req.headers.get("x-signature") ?? "";
+  const requestId = req.headers.get("x-request-id") ?? "";
+  const ts = signature.match(/(?:^|,)\s*ts=([^,]+)/)?.[1];
+  const v1 = signature.match(/(?:^|,)\s*v1=([^,]+)/)?.[1];
+  if (!requestId || !ts || !v1) return false;
+
+  const manifest = `id:${paymentId};request-id:${requestId};ts:${ts};`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
+  const expected = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return expected === v1;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const MP_TOKEN = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+    const MP_WEBHOOK_SECRET = Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     if (!MP_TOKEN) throw new Error("MERCADOPAGO_ACCESS_TOKEN not configured");
+    if (!MP_WEBHOOK_SECRET) throw new Error("MERCADOPAGO_WEBHOOK_SECRET not configured");
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
@@ -30,6 +52,13 @@ serve(async (req) => {
 
     if (!paymentId || (topic && topic !== "payment")) {
       return new Response(JSON.stringify({ ok: true, ignored: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!(await verifyMercadoPagoSignature(req, String(paymentId), MP_WEBHOOK_SECRET))) {
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
