@@ -18,7 +18,7 @@ const INACTIVITY_THRESHOLD_HOURS = 3;
 interface SchedulerConfig {
   force_run?: boolean;
   task_type?: string;
-  agents?: string[]; // which agents to run: "site", "research", "verification", "all"
+  agents?: string[]; // "site", "research", "verification", "improvement", "all"
 }
 
 serve(async (req) => {
@@ -160,6 +160,25 @@ serve(async (req) => {
       } catch (err) {
         results.sentinel = { error: err instanceof Error ? err.message : "Unknown" };
         await logAgentEnd(supabase, runLog?.id, false, null, results.sentinel.error);
+      }
+    }
+
+    // ─── 4. AI Improvement Cycle (rotating auditors + stalled Replit source) ───
+    if (runAll || agentsToRun.includes("improvement")) {
+      const runLog = await logAgentStart(supabase, "ai-improvement-cycle");
+      try {
+        console.log("[Scheduler] Running AI Improvement Cycle...");
+        const resp = await fetch(`${supabaseUrl}/functions/v1/ai-improvement-cycle`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ source: "scheduler" }),
+        });
+        const result = await resp.json();
+        results.improvement_cycle = result;
+        await logAgentEnd(supabase, runLog?.id, result.ok !== false, result);
+      } catch (err) {
+        results.improvement_cycle = { error: err instanceof Error ? err.message : "Unknown" };
+        await logAgentEnd(supabase, runLog?.id, false, null, results.improvement_cycle.error);
       }
     }
 
