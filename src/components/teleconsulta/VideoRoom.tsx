@@ -2,7 +2,7 @@
  * VideoRoom — Sala de vídeo nativa para teleconsulta
  *
  * Estratégia de fallback (sem custo):
- * 1. Se VITE_DAILY_CO_API_KEY estiver configurada → usa daily_room_url (Daily.co)
+ * 1. Se o backend criou daily_room_url → usa Daily.co
  * 2. Se não → usa Jitsi Meet (gratuito, sem conta, sem limite)
  *
  * O Jitsi funciona diretamente no browser via iframe com permissões de câmera e microfone.
@@ -26,10 +26,7 @@ interface VideoRoomProps {
 type PermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'error';
 
 export function VideoRoom({ roomName, roomUrl, displayName = 'Médico', onEnd }: VideoRoomProps) {
-  const hasDailyKey = !!import.meta.env.VITE_DAILY_CO_API_KEY;
-  // Só usa Daily se tiver key E a URL existir E não for uma URL de sala inexistente
-  // (salas criadas sem key real sempre falham com "does not exist")
-  const useDaily = hasDailyKey && !!roomUrl && !roomUrl.includes('rhema.daily.co');
+  const useDaily = !!roomUrl && /^https:\/\/[^/]+\.daily\.co\//i.test(roomUrl);
 
   // Jitsi config
   const jitsiRef = useRef<HTMLIFrameElement>(null);
