@@ -1,9 +1,9 @@
- import { useEffect, useState } from 'react';
+ import { useEffect, useState, type ReactNode } from 'react';
  import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/contexts/AuthContext';
  import { format } from 'date-fns';
- import { TrendingUp } from 'lucide-react';
+ import { Activity, BarChart3, CalendarClock, TrendingUp } from 'lucide-react';
  import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
  import { TrendAnalysisAssistant } from './TrendAnalysisAssistant';
  import { ScoreComparison } from './ScoreComparison';
@@ -68,8 +68,9 @@
      );
    }
  
-   // Group scores by type
-   const scoreTypes = [...new Set(scores.map(s => s.score_type))];
+	 // Group scores by type
+	 const scoreTypes = [...new Set(scores.map(s => s.score_type))];
+   const latestScore = scores[scores.length - 1];
  
    // Prepare chart data - group by date
    const chartData = scores.reduce((acc, score) => {
@@ -86,16 +87,40 @@
      return acc;
    }, [] as Array<{ date: string; [key: string]: any }>);
  
-   return (
-     <div className="space-y-4 md:space-y-6">
-       {/* AI Assistant */}
+	 return (
+	   <div className="space-y-4 md:space-y-6">
+	     {/* AI Assistant */}
        <TrendAnalysisAssistant 
          scores={scores} 
          patientCode={patientCode || 'Unknown'} 
          diagnosisTags={diagnosisTags || null}
-       />
- 
-       {/* Tabs for different views */}
+	       />
+
+       <div className="grid gap-3 sm:grid-cols-3">
+         <ScoreSignal
+           icon={<BarChart3 className="h-4 w-4" />}
+           label="Registros"
+           value={scores.length}
+           detail="pontos de evolução"
+           tone="primary"
+         />
+         <ScoreSignal
+           icon={<Activity className="h-4 w-4" />}
+           label="Índices"
+           value={scoreTypes.length}
+           detail={scoreTypes.slice(0, 2).join(' · ') || 'sem índice'}
+           tone="blue"
+         />
+         <ScoreSignal
+           icon={<CalendarClock className="h-4 w-4" />}
+           label="Último score"
+           value={latestScore.calculated_score}
+           detail={`${latestScore.score_type} · ${format(new Date(latestScore.created_at), 'MMM d')}`}
+           tone="green"
+         />
+       </div>
+	 
+	       {/* Tabs for different views */}
        <Tabs defaultValue="trends" className="w-full">
          <TabsList className="grid w-full grid-cols-3 mb-4">
            <TabsTrigger value="trends">Trends</TabsTrigger>
@@ -201,6 +226,35 @@
            </Card>
          </TabsContent>
        </Tabs>
+	     </div>
+	   );
+	 }
+
+ function ScoreSignal({ icon, label, value, detail, tone }: {
+   icon: ReactNode;
+   label: string;
+   value: number;
+   detail: string;
+   tone: 'primary' | 'blue' | 'green';
+ }) {
+   const toneClass = {
+     primary: 'border-primary/20 bg-primary/5 text-primary',
+     blue: 'border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300',
+     green: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300',
+   }[tone];
+
+   return (
+     <div className={`rounded-lg border px-3 py-3 ${toneClass}`}>
+       <div className="flex items-center justify-between gap-3">
+         <div className="flex items-center gap-2 min-w-0">
+           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background/70">
+             {icon}
+           </span>
+           <span className="truncate text-sm font-medium">{label}</span>
+         </div>
+         <span className="tabular-nums text-lg font-semibold text-foreground">{value}</span>
+       </div>
+       <p className="mt-2 truncate text-xs text-muted-foreground">{detail}</p>
      </div>
    );
  }
