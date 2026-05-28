@@ -3,6 +3,7 @@
 // content_overrides; structural patches queue as needs_review.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { authorizeCronOrAdmin } from "../_shared/cronAuth.ts";
 
 type Agent =
   | "perplexity" | "gemini" | "openai" | "anthropic"
@@ -118,6 +119,14 @@ function safeJSON(s: string | null): any | null {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const auth = await authorizeCronOrAdmin(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const supa = createClient(
     Deno.env.get("SUPABASE_URL")!,
