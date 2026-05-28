@@ -7,11 +7,11 @@ import { authorizeCronOrAdmin } from "../_shared/cronAuth.ts";
 
 type Agent =
   | "perplexity" | "gemini" | "openai" | "anthropic"
-  | "grok" | "deepseek" | "groq" | "openrouter" | "replit";
+  | "grok" | "deepseek" | "groq" | "openrouter" | "replit" | "huggingface";
 
 const ROTATION: Agent[] = [
   "perplexity", "gemini", "openai", "anthropic",
-  "grok", "deepseek", "groq", "openrouter", "replit",
+  "grok", "deepseek", "groq", "openrouter", "replit", "huggingface",
 ];
 
 const SYSTEM_PROMPT = `You are one of several rotating AI auditors continuously improving the UHS Health OS website.
@@ -35,6 +35,7 @@ Rules:
 
 const DESTRUCTIVE_REGEX = /\b(rm\s+-rf|drop\s+table|drop\s+database|truncate|delete\s+from|--force|chmod\s+777|git\s+push\s+--force|\.env|service_role|private[_-]?key|secret[_-]?key)\b/i;
 const MAX_REPLIT_CONTEXT_CHARS = 12000;
+const MAX_HF_CONTEXT_CHARS = 16000;
 
 function sanitize(proposals: any[]): any[] {
   if (!Array.isArray(proposals)) return [];
@@ -148,6 +149,51 @@ async function buildReplitContext(): Promise<string> {
   return chunks.join("\n\n");
 }
 
+async function fetchJsonWithTimeout(url: string, ms = 8000): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "rhema-huggingface-improvement-agent/1.0" },
+      signal: controller.signal,
+    });
+    if (!response.ok) return { error: `HTTP ${response.status}` };
+    return await response.json();
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "unknown_error" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function buildHuggingFaceContext(): Promise<string> {
+  const jobContextUrl = Deno.env.get("HF_CLINICAL_JOB_CONTEXT_URL")?.trim();
+  const datasetId = Deno.env.get("HF_CLINICAL_DATASET_ID")?.trim();
+  const spaceUrl = Deno.env.get("HF_CLINICAL_SPACE_URL")?.trim();
+  const manualContext = Deno.env.get("HF_CLINICAL_CONTEXT")?.trim();
+
+  const chunks: string[] = [
+    "This run uses Hugging Face as an external clinical-improvement workbench.",
+    "Treat HF Jobs, datasets, and Spaces as read-only evidence/proposal sources unless a human approves a specific deployment path.",
+    "Convert outputs into Rhema tasks for clinical instruments, patient interface improvements, accessibility, education content, and safety review.",
+    "Never include PHI or patient-identifying information.",
+  ];
+
+  if (jobContextUrl) {
+    const data = await fetchJsonWithTimeout(jobContextUrl);
+    chunks.push(`HF job context URL: ${jobContextUrl}`);
+    chunks.push(`HF job context JSON: ${JSON.stringify(data).slice(0, MAX_HF_CONTEXT_CHARS)}`);
+  } else {
+    chunks.push("HF_CLINICAL_JOB_CONTEXT_URL is not configured yet. Queue a review task to connect a persisted HF Jobs output.");
+  }
+
+  if (datasetId) chunks.push(`Candidate HF dataset: https://huggingface.co/datasets/${datasetId}`);
+  if (spaceUrl) chunks.push(`Candidate HF Space/workbench: ${spaceUrl}`);
+  if (manualContext) chunks.push(`Manual HF context: ${manualContext.slice(0, MAX_HF_CONTEXT_CHARS)}`);
+
+  return chunks.join("\n\n");
+}
+
 async function callAgent(agent: Agent, prompt: string): Promise<string | null> {
   switch (agent) {
     case "perplexity": return callPerplexity(prompt);
@@ -163,6 +209,13 @@ async function callAgent(agent: Agent, prompt: string): Promise<string | null> {
       return callLovableAI(
         "openai/gpt-5-mini",
         `${prompt}\n\nAdditional stalled Replit source:\n${replitContext}`,
+      );
+    }
+    case "huggingface": {
+      const hfContext = await buildHuggingFaceContext();
+      return callLovableAI(
+        "openai/gpt-5-mini",
+        `${prompt}\n\nAdditional Hugging Face workbench source:\n${hfContext}`,
       );
     }
   }
