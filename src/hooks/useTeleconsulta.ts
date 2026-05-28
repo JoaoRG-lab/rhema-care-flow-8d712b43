@@ -32,33 +32,13 @@ export type CreateTeleconsultaInput = {
 
 export type UpdateTeleconsultaInput = Partial<Omit<Teleconsulta, 'id' | 'provider_id' | 'created_at' | 'updated_at'>>;
 
-const DAILY_API_KEY = import.meta.env.VITE_DAILY_CO_API_KEY as string | undefined;
-
 async function createDailyRoom(roomName: string): Promise<{ url: string; name: string } | null> {
-  if (!DAILY_API_KEY) {
-    // Sem API key: retorna null — VideoRoom usará Jitsi automaticamente (gratuito)
-    return null;
-  }
   try {
-    const res = await fetch('https://api.daily.co/v1/rooms/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${DAILY_API_KEY}`,
-      },
-      body: JSON.stringify({
-        name: roomName,
-        properties: {
-          max_participants: 2,
-          enable_chat: true,
-          enable_screenshare: true,
-          exp: Math.floor(Date.now() / 1000) + 60 * 60 * 4, // 4 horas de validade
-        },
-      }),
+    const { data, error } = await supabase.functions.invoke('create-daily-room', {
+      body: { roomName },
     });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json() as { url: string; name: string };
-    return data;
+    if (error || !data?.url) return null;
+    return data as { url: string; name: string };
   } catch (err) {
     console.error('Daily.co room creation failed:', err);
     return null;
