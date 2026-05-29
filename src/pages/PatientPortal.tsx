@@ -11,15 +11,18 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  GraduationCap,
   Heart,
   Loader2,
   MessageSquare,
   Pill,
+  Send,
   ShieldCheck,
   Sparkles,
   Stethoscope,
   Target,
   TrendingDown,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -110,6 +113,24 @@ type MedicationRow = {
   instruction: string;
 };
 
+type NetworkPost = {
+  id: string;
+  authorRole: 'Equipe clinica' | 'Educador' | 'Paciente';
+  authorName: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  tone: 'clinical' | 'education' | 'patient';
+};
+
+type LearningPathItem = {
+  id: string;
+  title: string;
+  goal: string;
+  prompt: string;
+  source: string;
+};
+
 const EDUCATION_LIBRARY = [
   {
     title: 'Como reconhecer uma crise e quando procurar ajuda',
@@ -189,12 +210,15 @@ export default function PatientPortal() {
     updatedAt: null,
   }));
   const [completedTasks, setCompletedTasks] = useState<string[]>(() => getStored(`${storageKey}:done`, []));
+  const [patientPosts, setPatientPosts] = useState<NetworkPost[]>(() => getStored(`${storageKey}:network-posts`, []));
   const [portalData, setPortalData] = useState<PortalPayload | null>(null);
   const [portalLoading, setPortalLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [activationCode, setActivationCode] = useState('');
   const [activationMrn, setActivationMrn] = useState('');
   const [activationError, setActivationError] = useState<string | null>(null);
+  const [networkDraft, setNetworkDraft] = useState('');
+  const [understoodLessons, setUnderstoodLessons] = useState<string[]>(() => getStored(`${storageKey}:understood-lessons`, []));
 
   const loadPortal = async () => {
     setPortalLoading(true);
@@ -241,6 +265,14 @@ export default function PatientPortal() {
   useEffect(() => {
     localStorage.setItem(`${storageKey}:done`, JSON.stringify(completedTasks));
   }, [completedTasks, storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(`${storageKey}:network-posts`, JSON.stringify(patientPosts));
+  }, [patientPosts, storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(`${storageKey}:understood-lessons`, JSON.stringify(understoodLessons));
+  }, [understoodLessons, storageKey]);
 
   const scoreHistory = useMemo(() => {
     const scores = portalData?.scores ?? [];
@@ -309,6 +341,52 @@ export default function PatientPortal() {
     return item.match.some((tag) => haystack.includes(tag));
   }).slice(0, 4);
   const recommendedEducation = personalizedEducation.length > 0 ? personalizedEducation : EDUCATION_LIBRARY.slice(0, 4);
+  const learningPath = useMemo<LearningPathItem[]>(() => recommendedEducation.slice(0, 3).map((resource, index) => ({
+    id: `${resource.title}-${index}`,
+    title: resource.title,
+    goal: resource.category === 'Seguranca'
+      ? 'Reconhecer sinais que precisam de contato com a equipe'
+      : resource.category === 'Tratamento'
+        ? 'Entender o tratamento sem substituir a orientação médica'
+        : 'Transformar informação em pergunta para a consulta',
+    prompt: index === 0
+      ? 'Depois de ler, escreva uma dúvida que você levaria para a equipe.'
+      : 'Marque como compreendido ou envie para conversa se ainda ficou confuso.',
+    source: resource.source,
+  })), [recommendedEducation]);
+  const networkPosts = useMemo<NetworkPost[]>(() => {
+    const generated: NetworkPost[] = [
+      {
+        id: 'clinical-plan',
+        authorRole: 'Equipe clinica',
+        authorName: 'Plano Rhema',
+        title: 'Plano ativo do paciente',
+        body: `${profile.condition}. Meta atual: ${profile.careGoal}. ${portalData?.patient?.next_followup_date ? `Próximo seguimento em ${format(new Date(portalData.patient.next_followup_date), 'dd/MM/yyyy')}.` : 'Sem retorno agendado no prontuário.'}`,
+        createdAt: portalData?.patient?.last_visit_date ?? new Date().toISOString(),
+        tone: 'clinical',
+      },
+      {
+        id: 'education-next',
+        authorRole: 'Educador',
+        authorName: 'Trilha educativa',
+        title: learningPath[0]?.title ?? 'Preparar a próxima consulta',
+        body: learningPath[0]?.prompt ?? 'Use o check-in para transformar sintomas em uma pergunta clara para a equipe.',
+        createdAt: new Date().toISOString(),
+        tone: 'education',
+      },
+      ...(checkIn.updatedAt ? [{
+        id: 'patient-checkin',
+        authorRole: 'Paciente' as const,
+        authorName: profile.preferredName,
+        title: 'Check-in compartilhável',
+        body: `Dor ${checkIn.pain}/10, fadiga ${checkIn.fatigue}/10, rigidez ${checkIn.stiffness} min. ${checkIn.note || 'Sem nota livre.'}`,
+        createdAt: checkIn.updatedAt,
+        tone: 'patient' as const,
+      }] : []),
+    ];
+
+    return [...patientPosts, ...generated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [checkIn, learningPath, patientPosts, portalData?.patient, profile.careGoal, profile.condition, profile.preferredName]);
 
   const saveCheckIn = () => {
     setCheckIn((current) => ({ ...current, updatedAt: new Date().toISOString() }));
@@ -322,6 +400,31 @@ export default function PatientPortal() {
 
   const resetTask = (taskId: string) => {
     setCompletedTasks((current) => current.filter((id) => id !== taskId));
+  };
+
+  const publishPatientPost = () => {
+    const body = networkDraft.trim();
+    if (!body) {
+      toast.error('Escreva uma dúvida ou atualização antes de publicar');
+      return;
+    }
+    setPatientPosts((current) => [{
+      id: `patient-${Date.now()}`,
+      authorRole: 'Paciente',
+      authorName: profile.preferredName,
+      title: 'Atualização do paciente',
+      body,
+      createdAt: new Date().toISOString(),
+      tone: 'patient',
+    }, ...current]);
+    setNetworkDraft('');
+    toast.success('Atualização adicionada à rede de cuidado');
+  };
+
+  const toggleLesson = (lessonId: string) => {
+    setUnderstoodLessons((current) => current.includes(lessonId)
+      ? current.filter((id) => id !== lessonId)
+      : [...current, lessonId]);
   };
 
   const claimPortal = async () => {
@@ -426,11 +529,15 @@ export default function PatientPortal() {
                     Ola, {profile.preferredName}. Seu cuidado em um so lugar.
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                    Acompanhe sintomas, medicamentos, tarefas e conteudos alinhados ao seu plano. Este portal apoia a consulta, mas nao substitui atendimento medico.
+                    Acompanhe sintomas, medicamentos, tarefas, conversas e conteúdos alinhados ao seu plano. Este portal apoia a consulta, mas não substitui atendimento médico.
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setTab('network')}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Rede de cuidado
+                </Button>
                 <Button variant="outline" onClick={() => setTab('checkin')}>
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Fazer check-in
@@ -455,8 +562,9 @@ export default function PatientPortal() {
           </div>
 
           <Tabs value={tab} onValueChange={setTab} className="mt-6">
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 md:grid-cols-6">
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 md:grid-cols-7">
               <TabsTrigger value="home">Hoje</TabsTrigger>
+              <TabsTrigger value="network">Rede</TabsTrigger>
               <TabsTrigger value="checkin">Check-in</TabsTrigger>
               <TabsTrigger value="plan">Plano</TabsTrigger>
               <TabsTrigger value="sessions">Sessões</TabsTrigger>
@@ -533,6 +641,105 @@ export default function PatientPortal() {
                     )}
                   </CardContent>
                 </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="network" className="mt-5 space-y-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Users className="h-4 w-4 text-primary" />
+                      Rede médico-paciente
+                    </CardTitle>
+                    <CardDescription>Feed privado entre paciente, equipe clínica e educação guiada.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="rounded-lg border bg-muted/20 p-3">
+                      <Textarea
+                        value={networkDraft}
+                        onChange={(event) => setNetworkDraft(event.target.value)}
+                        placeholder="Compartilhe uma dúvida, uma mudança de sintoma ou algo que precisa ser explicado melhor..."
+                        className="min-h-24 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+                      />
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">Vinculado ao cartão {portalData.patient.patient_code}</p>
+                        <Button onClick={publishPatientPost}>
+                          <Send className="mr-2 h-4 w-4" />
+                          Publicar na rede
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {networkPosts.map((post) => (
+                        <NetworkPostCard
+                          key={post.id}
+                          post={post}
+                          onReply={() => {
+                            setNetworkDraft(`Respondendo a "${post.title}": `);
+                            toast.info('Resposta iniciada no compositor da rede');
+                          }}
+                          onSave={() => toast.success('Publicação salva para a próxima consulta')}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <GraduationCap className="h-4 w-4 text-primary" />
+                        Educador e educado
+                      </CardTitle>
+                      <CardDescription>Trilha curta para transformar conteúdo em conversa.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {learningPath.map((lesson) => {
+                        const understood = understoodLessons.includes(lesson.id);
+                        return (
+                          <div key={lesson.id} className="rounded-lg border p-3">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <Badge variant={understood ? 'secondary' : 'outline'}>{understood ? 'Compreendido' : 'Em estudo'}</Badge>
+                              <span className="text-xs text-muted-foreground">Fonte curada</span>
+                            </div>
+                            <p className="font-medium">{lesson.title}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{lesson.goal}</p>
+                            <p className="mt-2 text-xs text-muted-foreground">{lesson.prompt}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button size="sm" variant={understood ? 'secondary' : 'outline'} onClick={() => toggleLesson(lesson.id)}>
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                {understood ? 'Revisar' : 'Compreendi'}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => {
+                                setNetworkDraft(`Quero discutir: ${lesson.title}. Minha dúvida é: `);
+                                setTab('network');
+                              }}>
+                                Levar para conversa
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        Contrato de segurança
+                      </CardTitle>
+                      <CardDescription>Rede privada, paciente único e trilha auditável.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm text-muted-foreground">
+                      <p>Este espaço usa o vínculo único do portal. Nenhuma publicação cria novo paciente.</p>
+                      <p>Conteúdos educacionais entram como apoio à decisão compartilhada, não como prescrição automática.</p>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </TabsContent>
 
@@ -742,6 +949,54 @@ function EmptyClinicalState({ title, detail }: { title: string; detail: string }
       <p className="font-medium">{title}</p>
       <p className="mt-1 text-muted-foreground">{detail}</p>
     </div>
+  );
+}
+
+function NetworkPostCard({ post, onReply, onSave }: { post: NetworkPost; onReply: () => void; onSave: () => void }) {
+  const tone = {
+    clinical: {
+      badge: 'Plano',
+      className: 'border-l-primary',
+      icon: <Stethoscope className="h-4 w-4" />,
+    },
+    education: {
+      badge: 'Educação',
+      className: 'border-l-info',
+      icon: <GraduationCap className="h-4 w-4" />,
+    },
+    patient: {
+      badge: 'Paciente',
+      className: 'border-l-success',
+      icon: <Heart className="h-4 w-4" />,
+    },
+  }[post.tone];
+
+  return (
+    <article className={`rounded-lg border border-l-4 bg-card p-4 ${tone.className}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="rounded-full bg-muted p-2 text-muted-foreground">
+            {tone.icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium">{post.authorName}</p>
+              <Badge variant="outline">{post.authorRole}</Badge>
+              <Badge variant="secondary">{tone.badge}</Badge>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{format(new Date(post.createdAt), 'dd/MM/yyyy HH:mm')}</p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 space-y-1">
+        <p className="font-medium">{post.title}</p>
+        <p className="text-sm text-muted-foreground">{post.body}</p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={onReply}>Responder</Button>
+        <Button size="sm" variant="ghost" onClick={onSave}>Salvar para consulta</Button>
+      </div>
+    </article>
   );
 }
 
