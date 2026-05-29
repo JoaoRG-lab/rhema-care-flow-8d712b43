@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { safeRedirect } from '@/lib/safeRedirect';
 
+const REDIRECT_KEY = 'uhs_post_login_redirect';
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,10 +63,19 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
+      try {
+        sessionStorage.setItem(REDIRECT_KEY, redirectTo);
+      } catch {
+        // OAuth still works if sessionStorage is unavailable.
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
         },
       });
       if (error) {

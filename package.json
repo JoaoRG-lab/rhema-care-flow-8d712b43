@@ -9,6 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "edge:check": "bash -lc 'PATH=\"$HOME/.deno/bin:$PATH\" deno check supabase/functions/send-report-email/index.ts'",
+    "quality:gate": "python3 scripts/rhema_quality_gate.py",
+    "quality:fast": "python3 scripts/rhema_quality_gate.py --fast",
     "test": "vitest run",
     "test:watch": "vitest"
   },

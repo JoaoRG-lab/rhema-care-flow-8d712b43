@@ -16,7 +16,18 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ClipboardPlus, ChevronDown, ChevronUp, ClipboardList, ShieldAlert, AlertTriangle, X } from 'lucide-react';
+import {
+  Archive,
+  CheckCircle2,
+  ClipboardPlus,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  FileClock,
+  ShieldAlert,
+  AlertTriangle,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PrescriptionListProps {
@@ -123,23 +134,44 @@ export function PrescriptionList({ patientId, patientCode }: PrescriptionListPro
   return (
     <div className="space-y-5">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="h-5 w-5 text-primary" />
-          <span className="font-semibold">Prescrições</span>
-          {prescriptions.length > 0 && (
-            <Badge variant="secondary" className="text-xs">{prescriptions.length}</Badge>
-          )}
-          {draft.length > 0 && (
-            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-              {draft.length} rascunho{draft.length > 1 ? 's' : ''}
-            </Badge>
-          )}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            <span className="font-semibold">Prescrições</span>
+            {prescriptions.length > 0 && (
+              <Badge variant="secondary" className="text-xs">{prescriptions.length}</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Paciente {patientCode} · {draft.length} pendente{draft.length === 1 ? '' : 's'} · {active.length} ativa{active.length === 1 ? '' : 's'}
+          </p>
         </div>
         <Button size="sm" onClick={handleToggleComposer} className="gap-2">
           <ClipboardPlus className="h-4 w-4" />
           {composerOpen ? 'Fechar editor' : 'Nova prescrição'}
         </Button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <PrescriptionMetric
+          icon={<FileClock className="h-4 w-4" />}
+          label="Rascunhos"
+          value={draft.length}
+          tone="amber"
+        />
+        <PrescriptionMetric
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          label="Assinadas"
+          value={active.length}
+          tone="primary"
+        />
+        <PrescriptionMetric
+          icon={<Archive className="h-4 w-4" />}
+          label="Arquivadas"
+          value={archived.length}
+          tone="muted"
+        />
       </div>
 
       {/* Error banner — surfaces last hook error or PDF generation failure */}
@@ -268,6 +300,31 @@ export function PrescriptionList({ patientId, patientCode }: PrescriptionListPro
 }
 
 // ── Section collapsible ───────────────────────────────────────────────────────
+function PrescriptionMetric({ icon, label, value, tone }: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: 'primary' | 'amber' | 'muted';
+}) {
+  const toneClass = {
+    primary: 'border-primary/20 bg-primary/5 text-primary',
+    amber: 'border-amber-300/50 bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300',
+    muted: 'border-border bg-muted/40 text-muted-foreground',
+  }[tone];
+
+  return (
+    <div className={cn('flex items-center justify-between rounded-lg border px-3 py-2.5', toneClass)}>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background/70">
+          {icon}
+        </span>
+        <span className="truncate text-sm font-medium">{label}</span>
+      </div>
+      <span className="tabular-nums text-lg font-semibold text-foreground">{value}</span>
+    </div>
+  );
+}
+
 function Section({ title, icon, children, defaultOpen, count }: {
   title: string; icon: React.ReactNode;
   children: React.ReactNode; defaultOpen: boolean; count: number;

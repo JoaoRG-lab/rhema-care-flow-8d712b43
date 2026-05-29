@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -7,7 +7,25 @@ import { DiagnosisTag } from '@/components/ui/DiagnosisTag';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Calendar, ClipboardList, TrendingUp, Shield, Pencil, Trash2, ChevronLeft, ChevronRight, ArrowLeftRight, MessageSquare, ClipboardPlus, Video, Share2 } from 'lucide-react';
+import {
+  Activity,
+  ArrowLeft,
+  Calendar,
+  ClipboardList,
+  TrendingUp,
+  Shield,
+  Pencil,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeftRight,
+  MessageSquare,
+  ClipboardPlus,
+  Video,
+  Share2,
+  Pill,
+  ShieldAlert,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { VisitHistory } from '@/components/patients/VisitHistory';
@@ -152,10 +170,39 @@ import type { PatientCard } from '@/types/clinical';
            <p className="text-muted-foreground">Loading patient...</p>
          </div>
        </AppLayout>
-     );
-   }
+ );
+}
+
+function ClinicalSignal({ icon, label, value, tone }: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  tone: 'blue' | 'green' | 'amber';
+}) {
+  const toneClass = {
+    blue: 'border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300',
+    green: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300',
+  }[tone];
+
+  return (
+    <div className={`flex items-center justify-between rounded-lg border px-3 py-2.5 ${toneClass}`}>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-background/70">
+          {icon}
+        </span>
+        <span className="truncate text-sm font-medium">{label}</span>
+      </div>
+      <span className="tabular-nums text-lg font-semibold text-foreground">{value}</span>
+    </div>
+  );
+}
  
    if (!patient) return null;
+
+   const diagnosisCount = patient.diagnosis_tags?.length ?? 0;
+   const therapyCount = patient.therapy_tags?.length ?? 0;
+   const riskCount = patient.risk_flags?.length ?? 0;
  
    return (
      <AppLayout>
@@ -252,6 +299,27 @@ import type { PatientCard } from '@/types/clinical';
            </div>
          </div>
  
+         <div className="grid gap-3 sm:grid-cols-3 mb-6">
+           <ClinicalSignal
+             icon={<Activity className="h-4 w-4" />}
+             label="Diagnósticos"
+             value={diagnosisCount}
+             tone="blue"
+           />
+           <ClinicalSignal
+             icon={<Pill className="h-4 w-4" />}
+             label="Terapias"
+             value={therapyCount}
+             tone="green"
+           />
+           <ClinicalSignal
+             icon={<ShieldAlert className="h-4 w-4" />}
+             label="Riscos"
+             value={riskCount}
+             tone="amber"
+           />
+         </div>
+
          {/* Info Cards */}
          <div className="grid md:grid-cols-3 gap-4 mb-6">
            <Card>

@@ -1,7 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { createResendClient, sendEmail } from "../_shared/resend.ts";
 
 const resend = createResendClient();
+const MAX_PDF_BYTES = 8 * 1024 * 1024;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+const RATE_LIMIT_WINDOW_MINUTES = 60;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,12 +24,69 @@ interface SendReportRequest {
   additionalMessage?: string;
 }
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function requireUser(req: Request) {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return { user: null, response: json({ success: false, error: "Unauthorized" }, 401) };
+  }
+
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+  );
+  const { data, error } = await userClient.auth.getUser();
+  if (error || !data.user) {
+    return { user: null, response: json({ success: false, error: "Invalid session" }, 401) };
+  }
+  return { user: data.user, response: null };
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return json({ success: false, error: "Method not allowed" }, 405);
+  }
 
   try {
+    const { user, response } = await requireUser(req);
+    if (response) return response;
+
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const { data: allowed, error: rateLimitError } = await admin.rpc("check_rate_limit", {
+      p_user_id: user.id,
+      p_endpoint: "send-report-email",
+      p_max_requests: RATE_LIMIT_MAX_REQUESTS,
+      p_window_minutes: RATE_LIMIT_WINDOW_MINUTES,
+    });
+    if (rateLimitError) {
+      console.error("send-report-email rate limit error:", rateLimitError);
+    } else if (allowed === false) {
+      return json({ success: false, error: "Rate limit exceeded. Please try again later." }, 429);
+    }
+
     const {
       recipientEmail,
       recipientName,
@@ -37,28 +98,38 @@ const handler = async (req: Request): Promise<Response> => {
       additionalMessage,
     }: SendReportRequest = await req.json();
 
-    // Validate required fields
     if (!recipientEmail || !patientName || !reportType || !pdfBase64) {
-      throw new Error("Missing required fields: recipientEmail, patientName, reportType, pdfBase64");
+      return json(
+        { success: false, error: "Missing required fields: recipientEmail, patientName, reportType, pdfBase64" },
+        400,
+      );
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(recipientEmail)) {
-      throw new Error("Invalid email format");
+      return json({ success: false, error: "Invalid email format" }, 400);
     }
 
-    // Build email subject and body based on recipient type
+    const pdfBuffer = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+    if (pdfBuffer.byteLength > MAX_PDF_BYTES) {
+      return json({ success: false, error: "PDF is too large" }, 413);
+    }
+
     const isPatient = recipientType === 'patient';
+    const safeReportType = escapeHtml(reportType).slice(0, 120);
+    const safePatientName = escapeHtml(patientName).slice(0, 180);
+    const safeRecipientName = escapeHtml(recipientName).slice(0, 180);
+    const safeSenderName = escapeHtml(senderName || user.email || "RheumaFlow Team").slice(0, 180);
+    const safeAdditionalMessage = escapeHtml(additionalMessage).slice(0, 2000);
     const subject = isPatient
       ? `Your ${reportType} Report from RheumaFlow`
       : `Patient Report: ${patientName} - ${reportType}`;
 
-    const greeting = recipientName ? `Dear ${recipientName},` : 'Hello,';
+    const greeting = safeRecipientName ? `Dear ${safeRecipientName},` : 'Hello,';
     
     const bodyIntro = isPatient
-      ? `Please find attached your ${reportType} report.`
-      : `Please find attached the ${reportType} report for patient ${patientName}.`;
+      ? `Please find attached your ${safeReportType} report.`
+      : `Please find attached the ${safeReportType} report for patient ${safePatientName}.`;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -115,19 +186,19 @@ const handler = async (req: Request): Promise<Response> => {
         <body>
           <div class="header">
             <h1 style="margin: 0; font-size: 24px;">RheumaFlow</h1>
-            <p style="margin: 8px 0 0 0; opacity: 0.9;">${reportType} Report</p>
+	          <p style="margin: 8px 0 0 0; opacity: 0.9;">${safeReportType} Report</p>
           </div>
           <div class="content">
             <p>${greeting}</p>
             <p>${bodyIntro}</p>
-            ${additionalMessage ? `
-              <div class="message-box">
-                <strong>Message from your healthcare provider:</strong>
-                <p style="margin: 8px 0 0 0;">${additionalMessage}</p>
-              </div>
-            ` : ''}
-            <p>The PDF report is attached to this email for your records.</p>
-            ${senderName ? `<p>Best regards,<br><strong>${senderName}</strong></p>` : '<p>Best regards,<br>The RheumaFlow Team</p>'}
+	            ${safeAdditionalMessage ? `
+	              <div class="message-box">
+	                <strong>Message from your healthcare provider:</strong>
+	                <p style="margin: 8px 0 0 0;">${safeAdditionalMessage}</p>
+	              </div>
+	            ` : ''}
+	            <p>The PDF report is attached to this email for your records.</p>
+	            <p>Best regards,<br><strong>${safeSenderName}</strong></p>
             <div class="footer">
               <p>This email was sent via RheumaFlow Clinical Workflow System</p>
               <p class="disclaimer">
@@ -140,10 +211,6 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Convert base64 to buffer for attachment
-    const pdfBuffer = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-    
-    // Generate filename
     const timestamp = new Date().toISOString().split('T')[0];
     const sanitizedPatientName = patientName.replace(/[^a-zA-Z0-9]/g, '_');
     const filename = `${sanitizedPatientName}_${reportType.replace(/\s+/g, '_')}_${timestamp}.pdf`;
@@ -164,37 +231,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!emailResponse.ok) {
       console.error("Report email failed:", emailResponse.error, emailResponse.details);
-      return new Response(
-        JSON.stringify({ success: false, error: emailResponse.error }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return json({ success: false, error: emailResponse.error }, 500);
     }
 
-    console.log("Report email sent successfully:", emailResponse.id);
+    console.log("Report email sent successfully:", { id: emailResponse.id, userId: user.id });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        messageId: emailResponse.id,
-        message: `Report sent successfully to ${recipientEmail}`
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return json({
+      success: true,
+      messageId: emailResponse.id,
+      message: `Report sent successfully to ${recipientEmail}`,
+    });
   } catch (error: any) {
     console.error("Error in send-report-email function:", error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return json({ success: false, error: error.message }, 500);
   }
 };
 

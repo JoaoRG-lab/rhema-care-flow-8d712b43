@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { AlertTriangle, Github, Plus, Rocket, Send, Sparkles, Trash2, Bot, Code2, Search, KeyRound } from "lucide-react";
+import { AlertTriangle, Github, Plus, Rocket, Send, Sparkles, Trash2, Bot, Code2, Search, KeyRound, TerminalSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Agent = "user" | "chatgpt" | "codex" | "perplexity" | "custom" | "sentinel";
@@ -29,6 +29,11 @@ interface Message {
   model: string | null;
   citations: unknown;
   created_at: string;
+}
+interface DeploymentFile {
+  path: string;
+  bytes: number;
+  expectedSha: string | null;
 }
 
 const AGENT_META: Record<
@@ -102,6 +107,8 @@ export default function CodeConsole() {
   const [agent, setAgent] = useState<Exclude<Agent, "user" | "sentinel">>("chatgpt");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deploymentPlans, setDeploymentPlans] = useState<Record<string, DeploymentFile[]>>({});
+  const [deployingId, setDeployingId] = useState<string | null>(null);
   const [githubUrl, setGithubUrl] = useState(localStorage.getItem("cc.githubUrl") ?? "");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -197,10 +204,12 @@ export default function CodeConsole() {
     });
     setBusy(false);
     if (error) {
+      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
       toast.error(error.message);
       return;
     }
     if (data?.error) {
+      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
       toast.error(data.error);
       return;
     }
@@ -238,25 +247,53 @@ export default function CodeConsole() {
     setThreads((t) => t.map((x) => (x.id === activeId ? { ...x, deploy_agent: target.agent } : x)));
   }
 
-  async function deployMessage(messageId: string, dryRun = false) {
-    if (!dryRun && !confirm("Fazer commit direto no GitHub (dispara deploy ao site)?")) return;
-    const tid = toast.loading(dryRun ? "Verificando arquivos…" : "Fazendo deploy…");
+  async function previewFiles(messageId: string) {
+    setDeployingId(messageId);
+    const tid = toast.loading("Verificando arquivos…");
     const { data, error } = await supabase.functions.invoke("code-console-deploy", {
-      body: { messageId, dryRun },
+      body: { messageId, dryRun: true },
     });
     toast.dismiss(tid);
-    if (error) return toast.error(error.message);
-    if (data?.error) return toast.error(data.error);
-    if (dryRun) {
-      toast.success(`${data.files.length} arquivo(s) detectado(s): ${data.files.map((f: { path: string }) => f.path).join(", ")}`);
+    setDeployingId(null);
+    if (error) {
+      toast.error(error.message);
       return;
     }
-    const fails = (data.results ?? []).filter((r: { error?: string }) => r.error);
-    if (fails.length) {
-      toast.error(`Deploy parcial: ${data.committed}/${data.total}. Falhas: ${fails.map((f: { path: string; error?: string }) => `${f.path} (${f.error})`).join("; ")}`);
-    } else {
-      toast.success(`Deploy enviado: ${data.committed} arquivo(s) commitados em ${data.branch}.`);
+    if (data?.error) {
+      toast.error(data.error);
+      return;
     }
+    const files = (data?.files ?? []) as DeploymentFile[];
+    setDeploymentPlans((plans) => ({ ...plans, [messageId]: files }));
+    toast.success(`${files.length} arquivo(s) pronto(s) para aplicar em ${data.branch}.`);
+  }
+
+  async function applyFiles(messageId: string) {
+    const files = deploymentPlans[messageId];
+    if (!files?.length) return toast.error("Pre-visualize os arquivos antes de aplicar.");
+    if (!confirm(`Aplicar ${files.length} arquivo(s) na branch de agente?`)) return;
+    const expectedShas = Object.fromEntries(files.map((file) => [file.path, file.expectedSha]));
+    setDeployingId(messageId);
+    const tid = toast.loading("Aplicando na branch de agente…");
+    const { data, error } = await supabase.functions.invoke("code-console-deploy", {
+      body: { messageId, expectedShas },
+    });
+    toast.dismiss(tid);
+    setDeployingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (data?.error) {
+      toast.error(data.error);
+      return;
+    }
+    toast.success(`Commit ${data.commitSha.slice(0, 7)} criado em ${data.branch}.`);
+    setDeploymentPlans((plans) => {
+      const next = { ...plans };
+      delete next[messageId];
+      return next;
+    });
     const { data: refreshed } = await supabase
       .from("code_console_messages")
       .select("*")
@@ -478,11 +515,21 @@ export default function CodeConsole() {
                           <Button size="sm" variant="ghost" onClick={() => promote(m.id)}>
                             <Rocket className="mr-1 h-3 w-3" /> Promover
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => void deployMessage(m.id, true)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={deployingId === m.id}
+                            onClick={() => void previewFiles(m.id)}
+                          >
                             Pré-visualizar arquivos
                           </Button>
-                          <Button size="sm" variant="default" onClick={() => void deployMessage(m.id, false)}>
-                            <Rocket className="mr-1 h-3 w-3" /> Deploy ao site
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={!deploymentPlans[m.id]?.length || deployingId === m.id}
+                            onClick={() => void applyFiles(m.id)}
+                          >
+                            <TerminalSquare className="mr-1 h-3 w-3" /> Aplicar na branch
                           </Button>
                           <Button
                             size="sm"

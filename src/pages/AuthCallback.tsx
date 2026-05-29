@@ -52,6 +52,7 @@ export default function AuthCallback() {
     const run = async () => {
       try {
         const target = resolveRedirect(searchParams);
+        const code = searchParams.get('code');
 
         // 1) Subscribe FIRST so we never miss the SIGNED_IN event Supabase
         //    emits after exchanging the OAuth tokens in the URL hash.
@@ -67,7 +68,19 @@ export default function AuthCallback() {
         });
         unsub = () => sub.subscription.unsubscribe();
 
-        // 2) Probe the current session — handles the case where the session
+        // 2) OAuth providers such as Google return a `code` in PKCE flow.
+        //    Exchange it explicitly so callbacks do not hang on providers that
+        //    do not materialize the session before `getSession()` runs.
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          if (data.session) {
+            finish(target);
+            return;
+          }
+        }
+
+        // 3) Probe the current session — handles the case where the session
         //    is already established before the listener attached.
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
@@ -76,7 +89,7 @@ export default function AuthCallback() {
           return;
         }
 
-        // 3) Safety net: if no session materializes within 8s, bounce to login
+        // 4) Safety net: if no session materializes within 8s, bounce to login
         //    while preserving the intended (already-validated) redirect.
         timeoutId = setTimeout(() => {
           if (cancelled) return;

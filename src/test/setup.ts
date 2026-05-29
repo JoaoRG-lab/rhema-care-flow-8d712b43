@@ -1,4 +1,12 @@
 import "@testing-library/jest-dom";
+import { webcrypto } from "node:crypto";
+
+if (!globalThis.crypto?.subtle) {
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    configurable: true,
+  });
+}
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -22,4 +30,3 @@ class ResizeObserverMock {
 }
 (globalThis as unknown as { ResizeObserver: typeof ResizeObserverMock }).ResizeObserver =
   ResizeObserverMock;
-

@@ -1,216 +1,244 @@
-// code-console-deploy: faz commit direto no GitHub a partir de uma mensagem
-// do Code Console. Cada commit dispara o deploy automático (Vercel/Lovable).
-//
-// Auth: JWT do Supabase + e-mail autorizado.
-// Parsing: extrai blocos de código que tenham um cabeçalho de caminho:
-//   ```tsx file=src/foo.tsx
-//   ```ts path=src/lib/bar.ts
-//   ```css src/index.css
-// OU primeira linha do bloco:
-//   // file: src/foo.tsx
-//   /* file: src/index.css */
-//   <!-- file: index.html -->
-//   # file: README.md
-
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+// code-console-deploy: applies generated Code Console files to a non-production
+// agent branch with optimistic SHA checks and a single atomic Git commit.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const ALLOWED_EMAIL = "joaooz123@gmail.com";
-const GITHUB_PAT = Deno.env.get("GITHUB_PAT")!;
-const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "JoaoRG-lab/rhema-care-flow-8d712b43";
-const GITHUB_BRANCH = Deno.env.get("GITHUB_BRANCH") || "main";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-const cors = {
-  ...corsHeaders,
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-}
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const GITHUB_PAT = Deno.env.get("GITHUB_PAT");
+const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "JoaoRG-lab/rhema-care-flow-8d712b43";
+const GITHUB_BRANCH = Deno.env.get("GITHUB_BRANCH") || "agent-sandbox";
+const CONSOLE_ALLOWED_EMAIL = Deno.env.get("CONSOLE_ALLOWED_EMAIL")?.trim().toLowerCase();
 
 const GH = "https://api.github.com";
-const ghHeaders = {
-  Authorization: `Bearer ${GITHUB_PAT}`,
-  Accept: "application/vnd.github+json",
-  "X-GitHub-Api-Version": "2022-11-28",
-  "User-Agent": "code-console-deploy",
-};
-
-function b64encode(s: string): string {
-  return btoa(unescape(encodeURIComponent(s)));
-}
-
-function safePath(p: string): string | null {
-  const t = p.trim().replace(/^\.\/+/, "");
-  if (!t || t.includes("..") || t.startsWith("/") || t.startsWith("\\")) return null;
-  // bloqueia caminhos perigosos
-  const blocked = [
-    ".env",
-    "src/integrations/supabase/client.ts",
-    "src/integrations/supabase/types.ts",
-    "supabase/config.toml",
-  ];
-  if (blocked.includes(t)) return null;
-  return t;
-}
+const PROTECTED_BRANCHES = new Set(["main", "master"]);
+const MAX_FILES = 20;
+const MAX_FILE_BYTES = 1_000_000;
 
 interface FileEdit {
   path: string;
   content: string;
 }
 
-/**
- * Extrai pares (path, content) de um markdown contendo fences ``` ... ```.
- * Suporta cabeçalho no info string (file=... | path=... | bare path)
- * OU primeira linha do bloco com `// file: ...` etc.
- */
-function extractFiles(md: string): FileEdit[] {
-  const out: FileEdit[] = [];
-  const fenceRe = /```([^\n]*)\n([\s\S]*?)```/g;
-  let m: RegExpExecArray | null;
-  while ((m = fenceRe.exec(md)) !== null) {
-    const info = m[1].trim();
-    let body = m[2];
-    let path: string | null = null;
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
-    // 1) info string: file=... | path=...
+function githubHeaders() {
+  if (!GITHUB_PAT) throw new Error("GITHUB_PAT ausente");
+  return {
+    Authorization: `Bearer ${GITHUB_PAT}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "rhema-code-console-deploy",
+  };
+}
+
+function safePath(path: string): string | null {
+  const clean = path.trim().replace(/^\.\/+/, "");
+  const lower = clean.toLowerCase();
+  if (!clean || clean.includes("..") || clean.startsWith("/") || clean.startsWith("\\")) return null;
+  const blockedPrefixes = [".env", ".git", ".github/", "supabase/", "src/integrations/supabase/"];
+  if (blockedPrefixes.some((prefix) => lower === prefix || lower.startsWith(prefix))) return null;
+  return clean;
+}
+
+function extractFiles(markdown: string): FileEdit[] {
+  const edits = new Map<string, string>();
+  const fenceRe = /```([^\n]*)\n([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = fenceRe.exec(markdown)) !== null) {
+    const info = match[1].trim();
+    let body = match[2];
+    let path: string | null = null;
     const kv = info.match(/(?:file|path)\s*=\s*([^\s]+)/i);
     if (kv) path = kv[1];
 
-    // 2) info string: "<lang> <path>"
     if (!path) {
       const parts = info.split(/\s+/).filter(Boolean);
-      const cand = parts.find((p) => p.includes("/") || p.includes("."));
-      if (cand && cand !== parts[0]) path = cand;
+      const candidate = parts.find((part) => part.includes("/") || part.includes("."));
+      if (candidate && candidate !== parts[0]) path = candidate;
     }
 
-    // 3) primeira linha do bloco: // file: ... | /* file: ... */ | <!-- file: ... --> | # file: ...
     if (!path) {
       const firstLine = body.split("\n")[0] ?? "";
-      const fl = firstLine.match(
-        /(?:\/\/|\/\*|<!--|#)\s*file\s*:\s*([^\s*\->]+)/i,
-      );
-      if (fl) {
-        path = fl[1];
-        body = body.split("\n").slice(1).join("\n");
-      }
+      path = firstLine.match(/(?:\/\/|\/\*|<!--|#)\s*file\s*:\s*([^\s*>-]+)/i)?.[1] ?? null;
+      if (path) body = body.split("\n").slice(1).join("\n");
     }
 
-    if (!path) continue;
-    const safe = safePath(path);
+    const safe = path ? safePath(path) : null;
     if (!safe) continue;
-    out.push({ path: safe, content: body.replace(/\n$/, "") });
+    const content = body.replace(/\n$/, "");
+    if (new TextEncoder().encode(content).byteLength > MAX_FILE_BYTES) continue;
+    edits.set(safe, content);
   }
-  return out;
+
+  return Array.from(edits, ([path, content]) => ({ path, content })).slice(0, MAX_FILES);
 }
 
-async function ghGetSha(path: string): Promise<string | undefined> {
-  const url = `${GH}/repos/${GITHUB_REPO}/contents/${encodeURI(path)}?ref=${GITHUB_BRANCH}`;
-  const r = await fetch(url, { headers: ghHeaders });
-  if (r.status === 404) return undefined;
-  if (!r.ok) throw new Error(`GET ${path}: ${r.status} ${await r.text()}`);
-  const j = await r.json();
-  return j.sha as string;
-}
-
-async function ghPut(path: string, content: string, message: string) {
-  const sha = await ghGetSha(path);
-  const url = `${GH}/repos/${GITHUB_REPO}/contents/${encodeURI(path)}`;
-  const body: Record<string, unknown> = {
-    message,
-    content: b64encode(content),
-    branch: GITHUB_BRANCH,
-  };
-  if (sha) body.sha = sha;
-  const r = await fetch(url, {
-    method: "PUT",
-    headers: { ...ghHeaders, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+async function gh<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${GH}${path}`, {
+    ...init,
+    headers: {
+      ...githubHeaders(),
+      ...(init.headers ?? {}),
+    },
   });
-  if (!r.ok) throw new Error(`PUT ${path}: ${r.status} ${await r.text()}`);
-  return await r.json();
+  if (!response.ok) {
+    throw new Error(`GitHub ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  }
+  return await response.json() as T;
+}
+
+async function getBranchHead(): Promise<string> {
+  const ref = await gh<{ object: { sha: string } }>(
+    `/repos/${GITHUB_REPO}/git/ref/heads/${encodeURIComponent(GITHUB_BRANCH)}`,
+  );
+  return ref.object.sha;
+}
+
+async function getFileSha(path: string, ref: string): Promise<string | null> {
+  const response = await fetch(
+    `${GH}/repos/${GITHUB_REPO}/contents/${encodeURI(path)}?ref=${encodeURIComponent(ref)}`,
+    { headers: githubHeaders() },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`GitHub ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  }
+  const data = await response.json();
+  return Array.isArray(data) ? null : data.sha ?? null;
+}
+
+async function createBlob(content: string): Promise<string> {
+  const blob = await gh<{ sha: string }>(`/repos/${GITHUB_REPO}/git/blobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, encoding: "utf-8" }),
+  });
+  return blob.sha;
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    if (!GITHUB_REPO || !GITHUB_PAT || !CONSOLE_ALLOWED_EMAIL) {
+      return json({ error: "code-console-deploy não configurado" }, 503);
+    }
+    if (PROTECTED_BRANCHES.has(GITHUB_BRANCH)) {
+      return json({ error: `Branch protegida recusada: ${GITHUB_BRANCH}` }, 409);
+    }
+
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
 
-    // Valida usuário
-    const userClient = createClient(SUPABASE_URL, ANON, {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     });
-    const { data: u, error: uErr } = await userClient.auth.getUser();
-    if (uErr || !u.user) return json({ error: "invalid session" }, 401);
-    if (u.user.email?.toLowerCase() !== ALLOWED_EMAIL) {
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData.user) return json({ error: "invalid session" }, 401);
+    if (userData.user.email?.toLowerCase() !== CONSOLE_ALLOWED_EMAIL) {
       return json({ error: "forbidden" }, 403);
     }
 
-    const { messageId, dryRun } = await req.json().catch(() => ({}));
+    const { messageId, dryRun, expectedShas = {} } = await req.json().catch(() => ({}));
     if (!messageId) return json({ error: "messageId required" }, 400);
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
-    const { data: msg, error: mErr } = await admin
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    const { data: message, error: messageErr } = await admin
       .from("code_console_messages")
-      .select("id, thread_id, content, agent")
+      .select("id, thread_id, user_id, content, agent")
       .eq("id", messageId)
       .single();
-    if (mErr || !msg) return json({ error: "message not found" }, 404);
+    if (messageErr || !message) return json({ error: "message not found" }, 404);
+    if (message.user_id !== userData.user.id || message.agent === "user") {
+      return json({ error: "message not deployable" }, 403);
+    }
 
-    const files = extractFiles(msg.content as string);
-    if (files.length === 0) {
+    const files = extractFiles(String(message.content ?? ""));
+    if (!files.length) {
       return json({
-        error:
-          "Nenhum arquivo encontrado. A mensagem precisa conter blocos ```lang file=caminho/arquivo.ext ou primeira linha com // file: caminho.",
+        error: "Nenhum arquivo encontrado. Use blocos ```lang file=src/path.ext ou primeira linha // file: src/path.ext.",
       }, 422);
     }
 
+    const parentSha = await getBranchHead();
+    const filePlans = await Promise.all(
+      files.map(async (file) => ({
+        path: file.path,
+        bytes: new TextEncoder().encode(file.content).byteLength,
+        expectedSha: await getFileSha(file.path, parentSha),
+      })),
+    );
+
     if (dryRun) {
-      return json({ files: files.map((f) => ({ path: f.path, bytes: f.content.length })), dryRun: true });
+      return json({ branch: GITHUB_BRANCH, repo: GITHUB_REPO, parentSha, files: filePlans, dryRun: true });
     }
 
-    const commitMessage = `code-console(${msg.agent}): deploy from message ${messageId.slice(0, 8)}`;
-    const results: Array<{ path: string; sha?: string; error?: string }> = [];
-    for (const f of files) {
-      try {
-        const r = await ghPut(f.path, f.content, commitMessage);
-        results.push({ path: f.path, sha: r.commit?.sha });
-      } catch (e) {
-        results.push({ path: f.path, error: e instanceof Error ? e.message : String(e) });
+    for (const file of filePlans) {
+      const supplied = expectedShas[file.path] ?? null;
+      if (supplied !== file.expectedSha) {
+        return json({ error: `SHA mudou ou não foi pré-visualizado: ${file.path}` }, 409);
       }
     }
 
-    // marca mensagem como deploy
-    await admin
-      .from("code_console_messages")
-      .update({ promoted_for_deploy: true })
-      .eq("id", messageId);
-    await admin
-      .from("code_console_threads")
-      .update({ deploy_agent: msg.agent })
-      .eq("id", msg.thread_id);
+    const baseCommit = await gh<{ tree: { sha: string } }>(`/repos/${GITHUB_REPO}/git/commits/${parentSha}`);
+    const tree = [];
+    for (const file of files) {
+      tree.push({
+        path: file.path,
+        mode: "100644",
+        type: "blob",
+        sha: await createBlob(file.content),
+      });
+    }
 
-    const ok = results.filter((r) => !r.error).length;
+    const newTree = await gh<{ sha: string }>(`/repos/${GITHUB_REPO}/git/trees`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree }),
+    });
+
+    const commit = await gh<{ sha: string }>(`/repos/${GITHUB_REPO}/git/commits`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `code-console(${message.agent}): apply generated files`,
+        tree: newTree.sha,
+        parents: [parentSha],
+      }),
+    });
+
+    await gh(`/repos/${GITHUB_REPO}/git/refs/heads/${encodeURIComponent(GITHUB_BRANCH)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sha: commit.sha, force: false }),
+    });
+
+    await admin.from("code_console_messages").update({ promoted_for_deploy: true }).eq("id", messageId);
+    await admin.from("code_console_threads").update({ deploy_agent: message.agent }).eq("id", message.thread_id);
+
     return json({
       branch: GITHUB_BRANCH,
       repo: GITHUB_REPO,
-      committed: ok,
-      total: results.length,
-      results,
+      parentSha,
+      commitSha: commit.sha,
+      files: filePlans,
     });
-  } catch (e) {
-    console.error("deploy error", e);
-    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  } catch (error) {
+    console.error("code-console-deploy error", error);
+    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
