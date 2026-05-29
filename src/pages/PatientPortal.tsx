@@ -121,6 +121,7 @@ type NetworkPost = {
   body: string;
   createdAt: string;
   tone: 'clinical' | 'education' | 'patient';
+  route?: 'selfcare' | 'visit' | 'attention';
 };
 
 type LearningPathItem = {
@@ -190,6 +191,37 @@ function getInitialName(email?: string, fullName?: unknown) {
   return 'paciente';
 }
 
+function classifyPatientDraft(draft: string): { route: NonNullable<NetworkPost['route']>; label: string; detail: string; title: string } {
+  const text = draft.toLowerCase();
+  const attentionWords = ['febre', 'falta de ar', 'dor forte', 'infecção', 'infeccao', 'alergia', 'desmaio', 'piora importante'];
+  const visitWords = ['consulta', 'pergunta', 'duvida', 'dúvida', '?', 'exame', 'resultado', 'remedio', 'remédio', 'dose'];
+
+  if (attentionWords.some((word) => text.includes(word))) {
+    return {
+      route: 'attention',
+      label: 'Atenção',
+      detail: 'Guardar como ponto de atenção e orientar canal assistencial, sem notificar automaticamente.',
+      title: 'Ponto de atenção do paciente',
+    };
+  }
+
+  if (visitWords.some((word) => text.includes(word))) {
+    return {
+      route: 'visit',
+      label: 'Para consulta',
+      detail: 'Organizar para a próxima consulta ou revisão da equipe, sem virar mensagem avulsa.',
+      title: 'Pergunta para a consulta',
+    };
+  }
+
+  return {
+    route: 'selfcare',
+    label: 'Autocuidado',
+    detail: 'Fica no espaço do paciente e ajuda a personalizar educação e check-ins.',
+    title: 'Registro do paciente',
+  };
+}
+
 export default function PatientPortal() {
   const { user } = useAuth();
   const storageKey = `rhema:patient-portal:${user?.id ?? 'guest'}`;
@@ -211,6 +243,7 @@ export default function PatientPortal() {
   }));
   const [completedTasks, setCompletedTasks] = useState<string[]>(() => getStored(`${storageKey}:done`, []));
   const [patientPosts, setPatientPosts] = useState<NetworkPost[]>(() => getStored(`${storageKey}:network-posts`, []));
+  const [savedPostIds, setSavedPostIds] = useState<string[]>(() => getStored(`${storageKey}:saved-posts`, []));
   const [portalData, setPortalData] = useState<PortalPayload | null>(null);
   const [portalLoading, setPortalLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
@@ -269,6 +302,10 @@ export default function PatientPortal() {
   useEffect(() => {
     localStorage.setItem(`${storageKey}:network-posts`, JSON.stringify(patientPosts));
   }, [patientPosts, storageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(`${storageKey}:saved-posts`, JSON.stringify(savedPostIds));
+  }, [savedPostIds, storageKey]);
 
   useEffect(() => {
     localStorage.setItem(`${storageKey}:understood-lessons`, JSON.stringify(understoodLessons));
@@ -341,6 +378,7 @@ export default function PatientPortal() {
     return item.match.some((tag) => haystack.includes(tag));
   }).slice(0, 4);
   const recommendedEducation = personalizedEducation.length > 0 ? personalizedEducation : EDUCATION_LIBRARY.slice(0, 4);
+  const draftRoute = useMemo(() => classifyPatientDraft(networkDraft), [networkDraft]);
   const learningPath = useMemo<LearningPathItem[]>(() => recommendedEducation.slice(0, 3).map((resource, index) => ({
     id: `${resource.title}-${index}`,
     title: resource.title,
@@ -364,6 +402,7 @@ export default function PatientPortal() {
         body: `${profile.condition}. Meta atual: ${profile.careGoal}. ${portalData?.patient?.next_followup_date ? `Próximo seguimento em ${format(new Date(portalData.patient.next_followup_date), 'dd/MM/yyyy')}.` : 'Sem retorno agendado no prontuário.'}`,
         createdAt: portalData?.patient?.last_visit_date ?? new Date().toISOString(),
         tone: 'clinical',
+        route: 'visit',
       },
       {
         id: 'education-next',
@@ -373,6 +412,7 @@ export default function PatientPortal() {
         body: learningPath[0]?.prompt ?? 'Use o check-in para transformar sintomas em uma pergunta clara para a equipe.',
         createdAt: new Date().toISOString(),
         tone: 'education',
+        route: 'selfcare',
       },
       ...(checkIn.updatedAt ? [{
         id: 'patient-checkin',
@@ -382,11 +422,13 @@ export default function PatientPortal() {
         body: `Dor ${checkIn.pain}/10, fadiga ${checkIn.fatigue}/10, rigidez ${checkIn.stiffness} min. ${checkIn.note || 'Sem nota livre.'}`,
         createdAt: checkIn.updatedAt,
         tone: 'patient' as const,
+        route: 'visit' as const,
       }] : []),
     ];
 
     return [...patientPosts, ...generated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [checkIn, learningPath, patientPosts, portalData?.patient, profile.careGoal, profile.condition, profile.preferredName]);
+  const savedPosts = useMemo(() => networkPosts.filter((post) => savedPostIds.includes(post.id)), [networkPosts, savedPostIds]);
 
   const saveCheckIn = () => {
     setCheckIn((current) => ({ ...current, updatedAt: new Date().toISOString() }));
@@ -408,23 +450,30 @@ export default function PatientPortal() {
       toast.error('Escreva uma dúvida ou atualização antes de publicar');
       return;
     }
+    const route = classifyPatientDraft(body);
     setPatientPosts((current) => [{
       id: `patient-${Date.now()}`,
       authorRole: 'Paciente',
       authorName: profile.preferredName,
-      title: 'Atualização do paciente',
+      title: route.title,
       body,
       createdAt: new Date().toISOString(),
       tone: 'patient',
+      route: route.route,
     }, ...current]);
     setNetworkDraft('');
-    toast.success('Atualização adicionada à rede de cuidado');
+    toast.success(route.route === 'attention' ? 'Ponto de atenção guardado; use canais de urgência se necessário' : 'Registro guardado no seu espaço');
   };
 
   const toggleLesson = (lessonId: string) => {
     setUnderstoodLessons((current) => current.includes(lessonId)
       ? current.filter((id) => id !== lessonId)
       : [...current, lessonId]);
+  };
+
+  const savePostForVisit = (postId: string) => {
+    setSavedPostIds((current) => current.includes(postId) ? current : [...current, postId]);
+    toast.success('Item separado para a próxima consulta');
   };
 
   const claimPortal = async () => {
@@ -650,23 +699,37 @@ export default function PatientPortal() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Users className="h-4 w-4 text-primary" />
-                      Rede médico-paciente
+                      Área do paciente
                     </CardTitle>
-                    <CardDescription>Feed privado entre paciente, equipe clínica e educação guiada.</CardDescription>
+                    <CardDescription>Um espaço privado para aprender, registrar e chegar melhor preparado à consulta.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <PatientValueCard title="Para o paciente" detail="Entende o plano, acompanha sintomas e salva dúvidas sem se perder." />
+                      <PatientValueCard title="Para a consulta" detail="Transforma posts soltos em pauta objetiva para revisão clínica." />
+                      <PatientValueCard title="Para o médico" detail="Nada vira interrupção automática; a rede reduz ruído e organiza contexto." />
+                    </div>
+
                     <div className="rounded-lg border bg-muted/20 p-3">
                       <Textarea
                         value={networkDraft}
                         onChange={(event) => setNetworkDraft(event.target.value)}
-                        placeholder="Compartilhe uma dúvida, uma mudança de sintoma ou algo que precisa ser explicado melhor..."
+                        placeholder="Anote uma dúvida, mudança de sintoma, aprendizado ou ponto para a próxima consulta..."
                         className="min-h-24 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
                       />
+                      <div className="mt-3 rounded-md border bg-background p-3 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={draftRoute.route === 'attention' ? 'destructive' : draftRoute.route === 'visit' ? 'default' : 'secondary'}>
+                            {draftRoute.label}
+                          </Badge>
+                          <span>{draftRoute.detail}</span>
+                        </div>
+                      </div>
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground">Vinculado ao cartão {portalData.patient.patient_code}</p>
+                        <p className="text-xs text-muted-foreground">Vinculado ao cartão {portalData.patient.patient_code}. Não envia mensagem automática.</p>
                         <Button onClick={publishPatientPost}>
                           <Send className="mr-2 h-4 w-4" />
-                          Publicar na rede
+                          Guardar no meu espaço
                         </Button>
                       </div>
                     </div>
@@ -680,7 +743,8 @@ export default function PatientPortal() {
                             setNetworkDraft(`Respondendo a "${post.title}": `);
                             toast.info('Resposta iniciada no compositor da rede');
                           }}
-                          onSave={() => toast.success('Publicação salva para a próxima consulta')}
+                          onSave={() => savePostForVisit(post.id)}
+                          saved={savedPostIds.includes(post.id)}
                         />
                       ))}
                     </div>
@@ -732,10 +796,11 @@ export default function PatientPortal() {
                         <ShieldCheck className="h-4 w-4 text-primary" />
                         Contrato de segurança
                       </CardTitle>
-                      <CardDescription>Rede privada, paciente único e trilha auditável.</CardDescription>
+                      <CardDescription>Rede privada, paciente único e baixa fricção para a equipe.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm text-muted-foreground">
                       <p>Este espaço usa o vínculo único do portal. Nenhuma publicação cria novo paciente.</p>
+                      <p>Nada aqui notifica o médico automaticamente. O valor é organizar contexto, educação e pauta de consulta.</p>
                       <p>Conteúdos educacionais entram como apoio à decisão compartilhada, não como prescrição automática.</p>
                     </CardContent>
                   </Card>
@@ -887,6 +952,19 @@ export default function PatientPortal() {
                       Dor {checkIn.pain}/10, fadiga {checkIn.fatigue}/10, rigidez {checkIn.stiffness} min. Pergunta principal: {profile.nextQuestion || 'definir pergunta'}.
                     </p>
                   </div>
+                  <div className="rounded-lg border bg-muted/20 p-4">
+                    <p className="text-sm font-medium">Itens salvos da área do paciente</p>
+                    <div className="mt-2 space-y-2">
+                      {savedPosts.length > 0 ? savedPosts.slice(0, 4).map((post) => (
+                        <div key={post.id} className="rounded-md bg-background p-3 text-sm">
+                          <p className="font-medium">{post.title}</p>
+                          <p className="mt-1 text-muted-foreground">{post.body}</p>
+                        </div>
+                      )) : (
+                        <p className="text-sm text-muted-foreground">Salve posts da aba Rede para montar uma pauta objetiva sem sobrecarregar a equipe.</p>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => {
                       void navigator.clipboard.writeText(`Check-in Rhema: dor ${checkIn.pain}/10, fadiga ${checkIn.fatigue}/10, rigidez ${checkIn.stiffness} min. Nota: ${checkIn.note || 'sem nota'}`);
@@ -952,7 +1030,16 @@ function EmptyClinicalState({ title, detail }: { title: string; detail: string }
   );
 }
 
-function NetworkPostCard({ post, onReply, onSave }: { post: NetworkPost; onReply: () => void; onSave: () => void }) {
+function PatientValueCard({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-3">
+      <p className="text-sm font-medium">{title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function NetworkPostCard({ post, onReply, onSave, saved }: { post: NetworkPost; onReply: () => void; onSave: () => void; saved: boolean }) {
   const tone = {
     clinical: {
       badge: 'Plano',
@@ -992,9 +1079,16 @@ function NetworkPostCard({ post, onReply, onSave }: { post: NetworkPost; onReply
         <p className="font-medium">{post.title}</p>
         <p className="text-sm text-muted-foreground">{post.body}</p>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {post.route && (
+          <Badge variant={post.route === 'attention' ? 'destructive' : post.route === 'visit' ? 'default' : 'secondary'}>
+            {post.route === 'attention' ? 'Atenção' : post.route === 'visit' ? 'Para consulta' : 'Autocuidado'}
+          </Badge>
+        )}
         <Button size="sm" variant="outline" onClick={onReply}>Responder</Button>
-        <Button size="sm" variant="ghost" onClick={onSave}>Salvar para consulta</Button>
+        <Button size="sm" variant={saved ? 'secondary' : 'ghost'} onClick={onSave}>
+          {saved ? 'Salvo para consulta' : 'Salvar para consulta'}
+        </Button>
       </div>
     </article>
   );
