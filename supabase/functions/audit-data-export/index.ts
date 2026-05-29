@@ -222,6 +222,9 @@ Deno.serve(async (req) => {
         ...CORS,
         "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="uhs-audit-export-${exportTimestamp.slice(0, 10)}.json"`,
+        // Out-of-band key delivery: separate from the file body so leaked exports cannot be decrypted.
+        "X-Decryption-Key": encKey,
+        "Access-Control-Expose-Headers": "X-Decryption-Key, Content-Disposition",
       },
     });
   } catch (err) {
