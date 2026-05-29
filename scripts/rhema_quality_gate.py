@@ -34,9 +34,14 @@ class CheckResult:
 
 def run(command: list[str], timeout: int) -> CheckResult:
     started = datetime.now(timezone.utc)
+    env = os.environ.copy()
+    deno_bin = Path.home() / ".deno" / "bin"
+    if deno_bin.exists():
+        env["PATH"] = f"{deno_bin}{os.pathsep}{env.get('PATH', '')}"
     proc = subprocess.run(
         command,
         cwd=ROOT,
+        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -189,6 +194,7 @@ def main() -> int:
 
     commands = [
         ["npx", "tsc", "--noEmit"],
+        ["npm", "run", "edge:check"],
         ["npm", "run", "lint"],
     ]
     if not args.fast:
