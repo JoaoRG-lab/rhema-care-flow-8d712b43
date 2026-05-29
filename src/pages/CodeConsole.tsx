@@ -98,6 +98,32 @@ const AGENT_META: Record<
 
 const ALLOWED_EMAIL = "joaooz123@gmail.com";
 
+type InvokeErrorLike = Error & { context?: Response };
+
+async function readFunctionError(error: unknown, data?: { error?: unknown } | null): Promise<string | null> {
+  if (data?.error) return String(data.error);
+
+  const maybe = error as InvokeErrorLike | null;
+  if (!maybe) return null;
+
+  if (maybe.context instanceof Response) {
+    try {
+      const payload = await maybe.context.clone().json();
+      if (payload?.error) return String(payload.error);
+      if (payload?.message) return String(payload.message);
+    } catch {
+      try {
+        const text = await maybe.context.clone().text();
+        if (text) return text.slice(0, 320);
+      } catch {
+        // Fall back to the generic error message below.
+      }
+    }
+  }
+
+  return maybe.message || "A Edge Function retornou erro sem detalhes.";
+}
+
 export default function CodeConsole() {
   const { user } = useAuth();
   const allowed = user?.email?.toLowerCase() === ALLOWED_EMAIL;
@@ -203,14 +229,10 @@ export default function CodeConsole() {
       body: { threadId: activeId, prompt: text, agent },
     });
     setBusy(false);
-    if (error) {
+    const invokeError = await readFunctionError(error, data);
+    if (invokeError) {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
-      toast.error(error.message);
-      return;
-    }
-    if (data?.error) {
-      setMessages((current) => current.filter((message) => message.id !== optimistic.id));
-      toast.error(data.error);
+      toast.error(invokeError);
       return;
     }
     // Re-fetch (gets user msg + assistant msg in correct order)
@@ -255,12 +277,9 @@ export default function CodeConsole() {
     });
     toast.dismiss(tid);
     setDeployingId(null);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (data?.error) {
-      toast.error(data.error);
+    const invokeError = await readFunctionError(error, data);
+    if (invokeError) {
+      toast.error(invokeError);
       return;
     }
     const files = (data?.files ?? []) as DeploymentFile[];
@@ -280,12 +299,9 @@ export default function CodeConsole() {
     });
     toast.dismiss(tid);
     setDeployingId(null);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (data?.error) {
-      toast.error(data.error);
+    const invokeError = await readFunctionError(error, data);
+    if (invokeError) {
+      toast.error(invokeError);
       return;
     }
     toast.success(`Commit ${data.commitSha.slice(0, 7)} criado em ${data.branch}.`);

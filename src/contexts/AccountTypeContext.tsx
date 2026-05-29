@@ -26,36 +26,25 @@ export function AccountTypeProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('account_type' as any)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (cancelled) return;
-        const remote = (data as any)?.account_type as AccountType | null;
-        if (remote) {
-          setAccountTypeState(remote);
-          try { localStorage.setItem(LS_KEY, remote); } catch { /* no-op */ }
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+    if (!user) {
+      setAccountTypeState(null);
+      setLoading(false);
+      return;
+    }
+
+    const remote = user.user_metadata?.account_type as AccountType | undefined;
+    if (remote === 'clinician' || remote === 'patient') {
+      setAccountTypeState(remote);
+      try { localStorage.setItem(LS_KEY, remote); } catch { /* no-op */ }
+    }
+    setLoading(false);
   }, [user]);
 
   const setAccountType = useCallback(async (type: AccountType) => {
     setAccountTypeState(type);
     try { localStorage.setItem(LS_KEY, type); } catch { /* no-op */ }
     if (user) {
-      await supabase
-        .from('profiles')
-        .update({ account_type: type } as any)
-        .eq('user_id', user.id);
+      await supabase.auth.updateUser({ data: { account_type: type } });
     }
   }, [user]);
 

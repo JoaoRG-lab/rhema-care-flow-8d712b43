@@ -1,4 +1,4 @@
- import { useState } from "react";
+ import { useEffect, useState } from "react";
  import { useNavigate } from "react-router-dom";
  import { useForm } from "react-hook-form";
  import { zodResolver } from "@hookform/resolvers/zod";
@@ -185,7 +185,7 @@ type VerificationFormData = z.infer<typeof clinicalSchema> | z.infer<typeof deve
    });
  
    // Check for existing request
-   useState(() => {
+   useEffect(() => {
      const checkExisting = async () => {
        if (!user) {
          setIsLoading(false);
@@ -198,7 +198,7 @@ type VerificationFormData = z.infer<typeof clinicalSchema> | z.infer<typeof deve
          .eq("user_id", user.id)
          .order("created_at", { ascending: false })
          .limit(1)
-         .single();
+         .maybeSingle();
        
        if (data) {
          setExistingRequest(data);
@@ -207,7 +207,7 @@ type VerificationFormData = z.infer<typeof clinicalSchema> | z.infer<typeof deve
      };
      
      checkExisting();
-   });
+   }, [user]);
  
    const onSubmit = async (data: VerificationFormData) => {
      if (!user) {

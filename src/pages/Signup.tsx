@@ -9,8 +9,8 @@ import { UHSLogo } from '@/components/brand/UHSLogo';
 import { TrustBadge } from '@/components/brand/TrustBadges';
 import { Loader2, Shield, Lock, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { safeRedirect, buildRedirectQuery } from '@/lib/safeRedirect';
+import { describeOAuthError, startOAuthSignIn } from '@/lib/oauthSignIn';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -44,19 +44,14 @@ export default function Signup() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
-        },
-      });
+      const { error } = await startOAuthSignIn('google', redirectTo);
       if (error) {
-        toast.error(error.message);
+        toast.error(describeOAuthError(error));
         setGoogleLoading(false);
       }
       // If successful, the page will redirect
     } catch (err) {
-      toast.error('Failed to sign in with Google');
+      toast.error(describeOAuthError(err));
       setGoogleLoading(false);
     }
   };
