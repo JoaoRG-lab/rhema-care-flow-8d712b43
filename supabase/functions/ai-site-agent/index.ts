@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { errorResponse } from "../_shared/errors.ts";
+import { authorizeCronOrAdmin } from "../_shared/cronAuth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -108,6 +109,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const auth = await authorizeCronOrAdmin(req);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableKey) {
       throw new Error("LOVABLE_API_KEY not configured");

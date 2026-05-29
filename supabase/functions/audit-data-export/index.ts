@@ -188,9 +188,9 @@ Deno.serve(async (req) => {
         platform: "UHS Health OS",
         encryption: {
           algorithm: "AES-256-GCM",
-          key_delivery: "included_in_export",
+          key_delivery: "out_of_band_response_header",
           pii_fields_encrypted: Array.from(PII_FIELDS),
-          note: "Use the decryption_key below with AES-256-GCM to decrypt fields prefixed with 'ENC:'",
+          note: "Decryption key is delivered out-of-band in the 'X-Decryption-Key' HTTP response header at download time. It is intentionally NOT included in this file. Store the key separately and securely; without it the encrypted fields (prefixed with 'ENC:') cannot be read.",
         },
         statistics: {
           total_tables: Object.keys(tables).length,
@@ -200,7 +200,6 @@ Deno.serve(async (req) => {
           low_sensitivity_tables: TABLES_CONFIG.filter(t => t.sensitivity === "low").length,
         },
       },
-      decryption_key: encKey,
       tables,
     };
 
@@ -223,6 +222,9 @@ Deno.serve(async (req) => {
         ...CORS,
         "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="uhs-audit-export-${exportTimestamp.slice(0, 10)}.json"`,
+        // Out-of-band key delivery: separate from the file body so leaked exports cannot be decrypted.
+        "X-Decryption-Key": encKey,
+        "Access-Control-Expose-Headers": "X-Decryption-Key, Content-Disposition",
       },
     });
   } catch (err) {

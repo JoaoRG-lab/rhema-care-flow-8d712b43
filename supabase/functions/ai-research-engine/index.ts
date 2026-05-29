@@ -60,6 +60,38 @@ serve(async (req) => {
 
     const { action, topic, pipelineId, content, diseaseArea }: ResearchRequest = await req.json();
 
+    // batch_process is admin/scheduler-only (expensive multi-step AI pipeline)
+    if (action === "batch_process" && !isServiceRole) {
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!adminRole) {
+        return new Response(JSON.stringify({ error: "Forbidden: batch_process is admin-only" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Rate-limit non-service-role callers (20 req/hour)
+    if (!isServiceRole) {
+      const { data: allowed } = await supabase.rpc("check_rate_limit", {
+        p_user_id: userId,
+        p_endpoint: "ai-research-engine",
+        p_max_requests: 20,
+        p_window_minutes: 60,
+      });
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" },
+        });
+      }
+    }
+
     let result;
 
     switch (action) {
