@@ -40,7 +40,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-report-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-outreach-campaign]
 verify_jwt = false
@@ -65,5 +65,4 @@ verify_jwt = false
 
 [functions.agent-bridge]
 verify_jwt = false
-
 
