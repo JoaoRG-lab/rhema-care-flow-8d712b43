@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "quality:gate": "python3 scripts/rhema_quality_gate.py",
+    "quality:fast": "python3 scripts/rhema_quality_gate.py --fast",
     "test": "vitest run",
     "test:watch": "vitest"
   },
