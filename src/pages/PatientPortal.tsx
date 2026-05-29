@@ -4,6 +4,7 @@ import { format, addDays, isBefore, isToday, isTomorrow } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   Activity,
+  AlertCircle,
   Bell,
   BookOpen,
   Calendar,
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   ClipboardList,
   Heart,
+  Loader2,
   MessageSquare,
   Pill,
   ShieldCheck,
@@ -30,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { SessionList } from '@/components/consultations/SessionList';
 
 type CheckIn = {
@@ -47,6 +50,51 @@ type PatientProfile = {
   nextQuestion: string;
 };
 
+type PortalPatient = {
+  id: string;
+  patient_code: string;
+  mrn_last4: string | null;
+  diagnosis_tags: string[];
+  therapy_tags: string[];
+  risk_flags: string[];
+  last_visit_date: string | null;
+  next_followup_date: string | null;
+};
+
+type PortalScore = {
+  score_type: string;
+  calculated_score: number | string | null;
+  created_at: string;
+};
+
+type PortalMonitoring = {
+  id: string;
+  event_type: string;
+  due_date: string;
+  status: string | null;
+  completed_at: string | null;
+  notes: string | null;
+};
+
+type PortalPrescription = {
+  id: string;
+  status: string;
+  items: Array<{ drug?: string; dose?: string; frequency?: string; instructions?: string }> | unknown;
+  notes: string;
+  cid10: string;
+  signed_at: string | null;
+  created_at: string;
+};
+
+type PortalPayload = {
+  ok: boolean;
+  error?: string;
+  patient?: PortalPatient;
+  scores?: PortalScore[];
+  monitoring?: PortalMonitoring[];
+  prescriptions?: PortalPrescription[];
+};
+
 type CareTask = {
   id: string;
   title: string;
@@ -55,39 +103,12 @@ type CareTask = {
   type: 'medication' | 'exam' | 'visit' | 'selfcare';
 };
 
-const SCORE_HISTORY = [
-  { date: 'Jan', score: 4.2 },
-  { date: 'Feb', score: 3.8 },
-  { date: 'Mar', score: 3.5 },
-  { date: 'Apr', score: 3.2 },
-  { date: 'May', score: 2.9 },
-];
-
-const MEDICATIONS = [
-  {
-    name: 'Metotrexato',
-    dose: '15 mg semanal',
-    nextDue: addDays(new Date(), 2),
-    instruction: 'Tomar no mesmo dia da semana; avisar se houver febre, feridas na boca ou falta de ar.',
-  },
-  {
-    name: 'Acido folico',
-    dose: '1 mg diario',
-    nextDue: new Date(),
-    instruction: 'Mantem suporte ao tratamento e ajuda a reduzir efeitos adversos do metotrexato.',
-  },
-  {
-    name: 'Adalimumabe',
-    dose: '40 mg a cada 14 dias',
-    nextDue: addDays(new Date(), 5),
-    instruction: 'Nao aplicar se houver infeccao ativa sem orientacao da equipe.',
-  },
-];
-
-const APPOINTMENTS = [
-  { id: 'visit-rheum', type: 'Consulta de reumatologia', date: addDays(new Date(), 14), provider: 'Equipe Rhema' },
-  { id: 'lab-safety', type: 'Exames de seguranca', date: addDays(new Date(), 7), provider: 'Hemograma, TGO/TGP, creatinina' },
-];
+type MedicationRow = {
+  name: string;
+  dose: string;
+  nextDue: Date;
+  instruction: string;
+};
 
 const EDUCATION_LIBRARY = [
   {
@@ -168,6 +189,39 @@ export default function PatientPortal() {
     updatedAt: null,
   }));
   const [completedTasks, setCompletedTasks] = useState<string[]>(() => getStored(`${storageKey}:done`, []));
+  const [portalData, setPortalData] = useState<PortalPayload | null>(null);
+  const [portalLoading, setPortalLoading] = useState(true);
+  const [claiming, setClaiming] = useState(false);
+  const [activationCode, setActivationCode] = useState('');
+  const [activationMrn, setActivationMrn] = useState('');
+  const [activationError, setActivationError] = useState<string | null>(null);
+
+  const loadPortal = async () => {
+    setPortalLoading(true);
+    const { data, error } = await supabase.rpc('get_my_patient_portal' as never);
+    if (error) {
+      setPortalData({ ok: false, error: error.message });
+    } else {
+      setPortalData((data as unknown as PortalPayload) ?? { ok: false, error: 'empty_response' });
+    }
+    setPortalLoading(false);
+  };
+
+  useEffect(() => {
+    void loadPortal();
+  }, []);
+
+  useEffect(() => {
+    const patient = portalData?.patient;
+    if (!patient) return;
+    setProfile((current) => ({
+      ...current,
+      condition: patient.diagnosis_tags?.[0] ?? current.condition,
+      careGoal: patient.risk_flags?.length
+        ? `Acompanhar risco: ${patient.risk_flags.join(', ')}`
+        : current.careGoal,
+    }));
+  }, [portalData?.patient]);
 
   useEffect(() => {
     setProfile((current) => {
@@ -188,25 +242,57 @@ export default function PatientPortal() {
     localStorage.setItem(`${storageKey}:done`, JSON.stringify(completedTasks));
   }, [completedTasks, storageKey]);
 
-  const currentScore = SCORE_HISTORY[SCORE_HISTORY.length - 1]?.score ?? 0;
-  const previousScore = SCORE_HISTORY[SCORE_HISTORY.length - 2]?.score ?? currentScore;
+  const scoreHistory = useMemo(() => {
+    const scores = portalData?.scores ?? [];
+    return scores
+      .map((score) => ({
+        date: format(new Date(score.created_at), 'dd/MM'),
+        score: Number(score.calculated_score),
+      }))
+      .filter((score) => Number.isFinite(score.score))
+      .slice(-6);
+  }, [portalData?.scores]);
+
+  const medicationRows = useMemo<MedicationRow[]>(() => {
+    const prescriptions = portalData?.prescriptions ?? [];
+    return prescriptions.flatMap((prescription) => {
+      if (!Array.isArray(prescription.items)) return [];
+      return prescription.items.map((item, index) => ({
+        name: item.drug || `Medicamento ${index + 1}`,
+        dose: [item.dose, item.frequency].filter(Boolean).join(' - ') || 'Conferir prescricao',
+        nextDue: prescription.signed_at ? addDays(new Date(prescription.signed_at), 1) : new Date(prescription.created_at),
+        instruction: item.instructions || prescription.notes || 'Siga a orientacao registrada pela equipe.',
+      }));
+    });
+  }, [portalData?.prescriptions]);
+
+  const currentScore = scoreHistory[scoreHistory.length - 1]?.score ?? 0;
+  const previousScore = scoreHistory[scoreHistory.length - 2]?.score ?? currentScore;
   const scoreDelta = currentScore - previousScore;
+  const hasScores = scoreHistory.length > 0;
 
   const careTasks = useMemo<CareTask[]>(() => [
-    ...MEDICATIONS.map((med) => ({
+    ...medicationRows.map((med) => ({
       id: `med-${med.name}`,
       title: med.name,
       detail: med.dose,
       due: med.nextDue,
       type: 'medication' as const,
     })),
-    ...APPOINTMENTS.map((appointment) => ({
-      id: appointment.id,
-      title: appointment.type,
-      detail: appointment.provider,
-      due: appointment.date,
-      type: appointment.type.includes('Exames') ? 'exam' as const : 'visit' as const,
-    })),
+    ...((portalData?.monitoring ?? []).map((event) => ({
+      id: `monitoring-${event.id}`,
+      title: event.event_type,
+      detail: event.notes || 'Monitoramento definido pela equipe',
+      due: new Date(event.due_date),
+      type: 'exam' as const,
+    }))),
+    ...(portalData?.patient?.next_followup_date ? [{
+      id: 'next-followup',
+      title: 'Consulta de seguimento',
+      detail: `Cartao ${portalData.patient.patient_code}`,
+      due: new Date(portalData.patient.next_followup_date),
+      type: 'visit' as const,
+    }] : []),
     {
       id: 'self-checkin',
       title: 'Registrar sintomas',
@@ -214,12 +300,12 @@ export default function PatientPortal() {
       due: new Date(),
       type: 'selfcare',
     },
-  ].sort((a, b) => a.due.getTime() - b.due.getTime()), []);
+  ].sort((a, b) => a.due.getTime() - b.due.getTime()), [medicationRows, portalData?.monitoring, portalData?.patient]);
 
   const openTasks = careTasks.filter((task) => !completedTasks.includes(task.id));
   const overdueTasks = openTasks.filter((task) => isBefore(task.due, new Date()) && !isToday(task.due));
   const personalizedEducation = EDUCATION_LIBRARY.filter((item) => {
-    const haystack = `${profile.condition} ${profile.careGoal} ${checkIn.note} ${MEDICATIONS.map((m) => m.name).join(' ')}`.toLowerCase();
+    const haystack = `${profile.condition} ${profile.careGoal} ${checkIn.note} ${medicationRows.map((m) => m.name).join(' ')} ${(portalData?.patient?.therapy_tags ?? []).join(' ')}`.toLowerCase();
     return item.match.some((tag) => haystack.includes(tag));
   }).slice(0, 4);
   const recommendedEducation = personalizedEducation.length > 0 ? personalizedEducation : EDUCATION_LIBRARY.slice(0, 4);
@@ -237,6 +323,92 @@ export default function PatientPortal() {
   const resetTask = (taskId: string) => {
     setCompletedTasks((current) => current.filter((id) => id !== taskId));
   };
+
+  const claimPortal = async () => {
+    setActivationError(null);
+    setClaiming(true);
+    const { data, error } = await supabase.rpc('claim_my_patient_portal' as never, {
+      p_patient_code: activationCode.trim(),
+      p_mrn_last4: activationMrn.trim() || null,
+    } as never);
+    setClaiming(false);
+
+    if (error) {
+      setActivationError(error.message);
+      return;
+    }
+
+    const result = data as unknown as { ok: boolean; error?: string };
+    if (!result?.ok) {
+      const message = {
+        patient_not_found: 'Nao encontrei um paciente existente com esse codigo.',
+        patient_match_not_unique: 'Esse codigo encontra mais de um paciente. Peça para a equipe gerar um identificador unico.',
+        patient_already_linked: 'Esse paciente ja esta vinculado a outro acesso.',
+        patient_code_required: 'Informe o codigo do paciente.',
+      }[result?.error ?? ''] ?? 'Nao foi possivel ativar o portal.';
+      setActivationError(message);
+      return;
+    }
+
+    toast.success('Portal vinculado ao paciente existente');
+    await loadPortal();
+  };
+
+  if (portalLoading) {
+    return (
+      <AppLayout>
+        <div className="flex min-h-[60vh] items-center justify-center p-6">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Carregando vinculo unico do paciente...</span>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!portalData?.ok || !portalData.patient) {
+    return (
+      <AppLayout>
+        <main className="min-h-screen bg-background px-4 py-8 md:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl space-y-4">
+            <Card>
+              <CardHeader>
+                <Badge variant="secondary" className="w-fit">Ativacao unica</Badge>
+                <CardTitle>Conectar este acesso a um paciente existente</CardTitle>
+                <CardDescription>
+                  O portal do paciente nao cria novo cadastro. Ele precisa ser vinculado a um unico cartao ja aberto pela equipe clinica.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  Use o codigo de paciente recebido da equipe. Se houver final de prontuario, informe tambem para evitar ambiguidade.
+                </div>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium">Codigo do paciente</span>
+                  <Input value={activationCode} onChange={(event) => setActivationCode(event.target.value)} placeholder="Ex.: RHEMA-001" />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium">Final do prontuario, se fornecido</span>
+                  <Input value={activationMrn} onChange={(event) => setActivationMrn(event.target.value)} placeholder="4 digitos" maxLength={4} />
+                </label>
+                {activationError && (
+                  <div className="flex gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{activationError}</span>
+                  </div>
+                )}
+                <Button className="w-full" onClick={claimPortal} disabled={claiming}>
+                  {claiming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Ativar portal unico
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -276,8 +448,8 @@ export default function PatientPortal() {
 
         <div className="px-4 py-6 md:px-6 lg:px-8">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard icon={<Activity className="h-4 w-4" />} label="Atividade estimada" value={currentScore.toFixed(1)} detail="DAS28 de referencia" tone="primary" />
-            <MetricCard icon={<TrendingDown className="h-4 w-4" />} label="Tendencia" value={scoreDelta <= 0 ? 'Melhorando' : 'Observar'} detail={`${Math.abs(scoreDelta).toFixed(1)} vs ultima medida`} tone={scoreDelta <= 0 ? 'success' : 'warning'} />
+            <MetricCard icon={<Activity className="h-4 w-4" />} label="Atividade estimada" value={hasScores ? currentScore.toFixed(1) : 'Sem score'} detail="Registro vinculado ao prontuario" tone="primary" />
+            <MetricCard icon={<TrendingDown className="h-4 w-4" />} label="Tendencia" value={hasScores ? (scoreDelta <= 0 ? 'Melhorando' : 'Observar') : 'Aguardando'} detail={hasScores ? `${Math.abs(scoreDelta).toFixed(1)} vs ultima medida` : 'Sem serie clinica registrada'} tone={scoreDelta <= 0 ? 'success' : 'warning'} />
             <MetricCard icon={<Bell className="h-4 w-4" />} label="Tarefas abertas" value={String(openTasks.length)} detail={overdueTasks.length ? `${overdueTasks.length} atrasada(s)` : 'Sem atrasos'} tone={overdueTasks.length ? 'warning' : 'success'} />
             <MetricCard icon={<Target className="h-4 w-4" />} label="Meta atual" value="Plano ativo" detail={profile.careGoal} tone="info" />
           </div>
@@ -338,21 +510,27 @@ export default function PatientPortal() {
                     <CardDescription>Referencia visual para conversar com a equipe.</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[220px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={SCORE_HISTORY}>
-                          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                          <YAxis domain={[0, 6]} tick={{ fontSize: 12 }} />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
-                      <LegendDot className="bg-destructive" label="Alta atividade" />
-                      <LegendDot className="bg-warning" label="Atividade moderada" />
-                      <LegendDot className="bg-success" label="Baixa atividade" />
-                    </div>
+                    {hasScores ? (
+                      <>
+                        <div className="h-[220px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={scoreHistory}>
+                              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                              <YAxis domain={[0, 6]} tick={{ fontSize: 12 }} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
+                          <LegendDot className="bg-destructive" label="Alta atividade" />
+                          <LegendDot className="bg-warning" label="Atividade moderada" />
+                          <LegendDot className="bg-success" label="Baixa atividade" />
+                        </div>
+                      </>
+                    ) : (
+                      <EmptyClinicalState title="Sem scores clinicos" detail="Quando a equipe registrar medidas no prontuario, a tendencia aparece aqui." />
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -430,25 +608,29 @@ export default function PatientPortal() {
                     <CardDescription>Resumo legivel do plano atual.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {MEDICATIONS.map((med) => (
-                      <div key={med.name} className="rounded-lg border p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="font-medium">{med.name}</p>
-                            <p className="text-sm text-muted-foreground">{med.dose}</p>
+                    {medicationRows.length > 0 ? (
+                      medicationRows.map((med) => (
+                        <div key={med.name} className="rounded-lg border p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="font-medium">{med.name}</p>
+                              <p className="text-sm text-muted-foreground">{med.dose}</p>
+                            </div>
+                            <Badge variant={isToday(med.nextDue) ? 'default' : 'outline'}>{getDueLabel(med.nextDue)}</Badge>
                           </div>
-                          <Badge variant={isToday(med.nextDue) ? 'default' : 'outline'}>{getDueLabel(med.nextDue)}</Badge>
-                        </div>
-                        <p className="mt-2 text-sm text-muted-foreground">{med.instruction}</p>
-                        <div className="mt-3">
-                          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                            <span>Adesao estimada no mes</span>
-                            <span>85%</span>
+                          <p className="mt-2 text-sm text-muted-foreground">{med.instruction}</p>
+                          <div className="mt-3">
+                            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                              <span>Adesao estimada no mes</span>
+                              <span>85%</span>
+                            </div>
+                            <Progress value={85} className="h-2" />
                           </div>
-                          <Progress value={85} className="h-2" />
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <EmptyClinicalState title="Sem prescricao registrada" detail="Este portal nao inventa tratamento. A lista aparece quando houver prescricao vinculada ao paciente." />
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -550,6 +732,15 @@ function LegendDot({ className, label }: { className: string; label: string }) {
     <div className="flex items-center gap-2">
       <span className={`h-3 w-3 rounded-full ${className}`} />
       <span>{label}</span>
+    </div>
+  );
+}
+
+function EmptyClinicalState({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm">
+      <p className="font-medium">{title}</p>
+      <p className="mt-1 text-muted-foreground">{detail}</p>
     </div>
   );
 }
