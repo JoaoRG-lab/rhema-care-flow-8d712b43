@@ -69,8 +69,19 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Test mode - send to single email
+    // Test mode - only allow sending to the authenticated user's own email
     if (testMode && testEmail) {
+      const callerEmail = (user.email || "").toLowerCase().trim();
+      const target = testEmail.toLowerCase().trim();
+      if (!callerEmail || target !== callerEmail) {
+        return new Response(JSON.stringify({
+          error: "Test emails can only be sent to your own account email address.",
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const result = await sendEmail(resend, {
         from: `${campaign.sender_name} <${campaign.sender_email}>`,
         to: testEmail,
