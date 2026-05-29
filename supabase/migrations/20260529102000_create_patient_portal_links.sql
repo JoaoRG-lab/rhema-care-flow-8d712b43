@@ -182,5 +182,10 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.claim_my_patient_portal(TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_my_patient_portal(TEXT, TEXT) FROM anon;
+REVOKE ALL ON FUNCTION public.get_my_patient_portal() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_my_patient_portal() FROM anon;
+
 GRANT EXECUTE ON FUNCTION public.claim_my_patient_portal(TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_patient_portal() TO authenticated;
