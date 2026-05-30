@@ -91,6 +91,10 @@ const CodeConsole = lazy(() => import("./pages/CodeConsole"));
 const SandboxConsole = lazy(() => import("./pages/SandboxConsole"));
 const AiRedundancy = lazy(() => import("./pages/AiRedundancy"));
 const EngineOps = lazy(() => import("./pages/EngineOps"));
+const PatientProblemsPage = lazy(() => import("./pages/PatientProblemsPage"));
+const ProblemDetailPage = lazy(() => import("./pages/ProblemDetailPage"));
+const PatientScoresPage = lazy(() => import("./pages/PatientScoresPage"));
+const PatientTherapeuticSafetyPage = lazy(() => import("./pages/PatientTherapeuticSafetyPage"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -154,6 +158,10 @@ const App = () => (
                       <Route path="/dashboard" element={<ClinicianRoute><Dashboard /></ClinicianRoute>} />
                       <Route path="/patients" element={<ClinicianRoute><Patients /></ClinicianRoute>} />
                       <Route path="/patients/:id" element={<ClinicianRoute><PatientDetail /></ClinicianRoute>} />
+                      <Route path="/patients/:patientId/problems" element={<ClinicianRoute><PatientProblemsPage /></ClinicianRoute>} />
+                      <Route path="/patients/:patientId/problems/:problemId" element={<ClinicianRoute><ProblemDetailPage /></ClinicianRoute>} />
+                      <Route path="/patients/:patientId/scores" element={<ClinicianRoute><PatientScoresPage /></ClinicianRoute>} />
+                      <Route path="/patients/:patientId/therapeutic-safety" element={<ClinicianRoute><PatientTherapeuticSafetyPage /></ClinicianRoute>} />
                       {/* FIX: /scores now requires authentication */}
                       <Route path="/scores" element={<ProtectedRoute><Scores /></ProtectedRoute>} />
                       <Route path="/monitoring" element={<ClinicianRoute><Monitoring /></ClinicianRoute>} />
