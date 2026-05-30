@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function ProblemListPanel({ patientId }: Props) {
-  const specialty = (() => { try { return useSpecialty()?.currentSpecialty?.id; } catch { return undefined; } })();
+  const specialty = (() => { try { return useSpecialty()?.specialtyId; } catch { return undefined; } })();
   const { problems, loading, createProblem } = useProblems(patientId);
   const [adding, setAdding] = useState(false);
   const [code, setCode] = useState('');
