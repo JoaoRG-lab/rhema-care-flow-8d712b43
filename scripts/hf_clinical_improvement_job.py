@@ -20,7 +20,11 @@ from datetime import datetime, timezone
 from typing import Iterable
 
 import requests
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+except ModuleNotFoundError:  # Local WSL can run without installing HF job deps.
+    BeautifulSoup = None
 
 
 DEFAULT_ROUTES = ["/", "/learn", "/scores", "/landing", "/about"]
@@ -48,10 +52,17 @@ def fetch_text(url: str) -> tuple[int | None, str]:
     except requests.RequestException as exc:
         return None, f"FETCH_ERROR: {exc}"
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    for tag in soup(["script", "style", "noscript"]):
-        tag.decompose()
-    text = re.sub(r"\s+", " ", soup.get_text(" ")).strip()
+    if BeautifulSoup is not None:
+        soup = BeautifulSoup(response.text, "html.parser")
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+        text = soup.get_text(" ")
+    else:
+        text = re.sub(r"<script[\s\S]*?</script>", " ", response.text, flags=re.I)
+        text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.I)
+        text = re.sub(r"<noscript[\s\S]*?</noscript>", " ", text, flags=re.I)
+        text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return response.status_code, text[:12000]
 
 
