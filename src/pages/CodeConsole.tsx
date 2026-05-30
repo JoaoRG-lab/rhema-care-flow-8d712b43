@@ -35,6 +35,22 @@ interface DeploymentFile {
   bytes: number;
   expectedSha: string | null;
 }
+interface DeploymentPlan {
+  branch: string;
+  baseBranch?: string;
+  repo?: string;
+  parentSha: string;
+  files: DeploymentFile[];
+}
+interface DeploymentResult {
+  branch: string;
+  commitSha: string;
+  pullRequest?: {
+    number: number;
+    html_url: string;
+    state: string;
+  } | null;
+}
 
 const AGENT_META: Record<
   Exclude<Agent, "user" | "sentinel">,
@@ -133,7 +149,7 @@ export default function CodeConsole() {
   const [agent, setAgent] = useState<Exclude<Agent, "user" | "sentinel">>("chatgpt");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
-  const [deploymentPlans, setDeploymentPlans] = useState<Record<string, DeploymentFile[]>>({});
+  const [deploymentPlans, setDeploymentPlans] = useState<Record<string, DeploymentPlan>>({});
   const [deployingId, setDeployingId] = useState<string | null>(null);
   const [githubUrl, setGithubUrl] = useState(localStorage.getItem("cc.githubUrl") ?? "");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -283,19 +299,29 @@ export default function CodeConsole() {
       return;
     }
     const files = (data?.files ?? []) as DeploymentFile[];
-    setDeploymentPlans((plans) => ({ ...plans, [messageId]: files }));
+    setDeploymentPlans((plans) => ({
+      ...plans,
+      [messageId]: {
+        branch: String(data.branch ?? "codex/code-console"),
+        baseBranch: data.baseBranch ? String(data.baseBranch) : undefined,
+        repo: data.repo ? String(data.repo) : undefined,
+        parentSha: String(data.parentSha ?? ""),
+        files,
+      },
+    }));
     toast.success(`${files.length} arquivo(s) pronto(s) para aplicar em ${data.branch}.`);
   }
 
   async function applyFiles(messageId: string) {
-    const files = deploymentPlans[messageId];
-    if (!files?.length) return toast.error("Pre-visualize os arquivos antes de aplicar.");
-    if (!confirm(`Aplicar ${files.length} arquivo(s) na branch de agente?`)) return;
+    const plan = deploymentPlans[messageId];
+    const files = plan?.files ?? [];
+    if (!files.length) return toast.error("Pre-visualize os arquivos antes de aplicar.");
+    if (!confirm(`Aplicar ${files.length} arquivo(s) em ${plan.branch} e abrir PR para ${plan.baseBranch ?? "main"}?`)) return;
     const expectedShas = Object.fromEntries(files.map((file) => [file.path, file.expectedSha]));
     setDeployingId(messageId);
     const tid = toast.loading("Aplicando na branch de agente…");
     const { data, error } = await supabase.functions.invoke("code-console-deploy", {
-      body: { messageId, expectedShas },
+      body: { messageId, expectedShas, openPullRequest: true },
     });
     toast.dismiss(tid);
     setDeployingId(null);
@@ -304,7 +330,9 @@ export default function CodeConsole() {
       toast.error(invokeError);
       return;
     }
-    toast.success(`Commit ${data.commitSha.slice(0, 7)} criado em ${data.branch}.`);
+    const result = data as DeploymentResult;
+    const prText = result.pullRequest ? ` PR #${result.pullRequest.number} aberto.` : "";
+    toast.success(`Commit ${result.commitSha.slice(0, 7)} criado em ${result.branch}.${prText}`);
     setDeploymentPlans((plans) => {
       const next = { ...plans };
       delete next[messageId];
@@ -542,11 +570,20 @@ export default function CodeConsole() {
                           <Button
                             size="sm"
                             variant="default"
-                            disabled={!deploymentPlans[m.id]?.length || deployingId === m.id}
+                            disabled={!deploymentPlans[m.id]?.files.length || deployingId === m.id}
                             onClick={() => void applyFiles(m.id)}
                           >
                             <TerminalSquare className="mr-1 h-3 w-3" /> Aplicar na branch
                           </Button>
+                          {deploymentPlans[m.id]?.repo && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(`https://github.com/${deploymentPlans[m.id].repo}/compare/${deploymentPlans[m.id].baseBranch ?? "main"}...${deploymentPlans[m.id].branch}`, "_blank", "noopener")}
+                            >
+                              <Github className="mr-1 h-3 w-3" /> Comparar
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
