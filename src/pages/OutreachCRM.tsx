@@ -64,6 +64,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AIOutreachResearchPanel, EPIC_CTA_TEMPLATE } from '@/components/outreach/AIOutreachResearchPanel';
+import DOMPurify from 'dompurify';
 
 interface OutreachContact {
   id: string;
@@ -95,6 +96,7 @@ interface OutreachCampaign {
 interface OutreachTemplate {
   id: string;
   name: string;
+  description: string | null;
   template_type: string;
   subject: string;
   body: string;
@@ -128,6 +130,7 @@ export default function OutreachCRM() {
   const [showAddContact, setShowAddContact] = useState(false);
   const [showAddCampaign, setShowAddCampaign] = useState(false);
   const [showAddTemplate, setShowAddTemplate] = useState(false);
+  const [previewCampaign, setPreviewCampaign] = useState<OutreachCampaign | null>(null);
 
   // Form states
   const [newContact, setNewContact] = useState({
@@ -147,6 +150,14 @@ export default function OutreachCRM() {
     sender_name: 'Novus Oriens',
     sender_email: 'orienta@novusoriens.org',
     target_audience: [] as string[],
+  });
+
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    description: '',
+    template_type: 'general',
+    subject: '',
+    body: '',
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -232,6 +243,49 @@ export default function OutreachCRM() {
     }
   };
 
+  const handleAddTemplate = async () => {
+    if (!newTemplate.name || !newTemplate.subject || !newTemplate.body) {
+      toast.error('Name, subject, and body are required');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('outreach_templates').insert({
+        user_id: user?.id,
+        ...newTemplate,
+        description: newTemplate.description || null,
+      });
+
+      if (error) throw error;
+
+      toast.success('Template created');
+      setShowAddTemplate(false);
+      setNewTemplate({
+        name: '',
+        description: '',
+        template_type: 'general',
+        subject: '',
+        body: '',
+      });
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create template');
+    }
+  };
+
+  const applyTemplateToCampaign = (template: OutreachTemplate) => {
+    setNewCampaign((current) => ({
+      ...current,
+      name: current.name || `${template.name} campaign`,
+      campaign_type: template.template_type,
+      email_subject: template.subject,
+      email_body: template.body,
+      target_audience: template.template_type === 'general' ? current.target_audience : [template.template_type],
+    }));
+    setActiveTab('campaigns');
+    setShowAddCampaign(true);
+  };
+
   const handleSendCampaign = async (campaignId: string, testMode = false, testEmail = '') => {
     setSending(true);
     try {
@@ -267,6 +321,18 @@ export default function OutreachCRM() {
       fetchData();
     } catch (err) {
       toast.error('Failed to delete');
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Delete this template?')) return;
+    try {
+      const { error } = await supabase.from('outreach_templates').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Template deleted');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete template');
     }
   };
 
@@ -467,6 +533,25 @@ export default function OutreachCRM() {
                     </div>
                     <div className="space-y-2">
                       <Label>Email Subject</Label>
+                      {templates.length > 0 && (
+                        <Select
+                          onValueChange={(templateId) => {
+                            const template = templates.find((item) => item.id === templateId);
+                            if (template) applyTemplateToCampaign(template);
+                          }}
+                        >
+                          <SelectTrigger className="mb-2">
+                            <SelectValue placeholder="Start from a saved template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {templates.map((template) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <Input
                         value={newCampaign.email_subject}
                         onChange={(e) => setNewCampaign({ ...newCampaign, email_subject: e.target.value })}
@@ -587,7 +672,7 @@ export default function OutreachCRM() {
                                 )}
                               </Button>
                             )}
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" onClick={() => setPreviewCampaign(campaign)}>
                               <Eye className="h-4 w-4" />
                             </Button>
                           </div>
@@ -788,23 +873,163 @@ export default function OutreachCRM() {
           <TabsContent value="templates" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Email Templates</h2>
-              <Button className="gap-2" disabled>
-                <Plus className="h-4 w-4" />
-                New Template
-                <Badge variant="secondary" className="ml-1">Coming Soon</Badge>
-              </Button>
+              <Dialog open={showAddTemplate} onOpenChange={setShowAddTemplate}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    New Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Create Template</DialogTitle>
+                    <DialogDescription>
+                      Save a reusable outreach message for future campaigns.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Template Name</Label>
+                        <Input
+                          value={newTemplate.name}
+                          onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+                          placeholder="University partnership"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Template Type</Label>
+                        <Select
+                          value={newTemplate.template_type}
+                          onValueChange={(value) => setNewTemplate({ ...newTemplate, template_type: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General</SelectItem>
+                            {ORGANIZATION_TYPES.map(type => (
+                              <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Input
+                        value={newTemplate.description}
+                        onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
+                        placeholder="When to use this template"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email Subject</Label>
+                      <Input
+                        value={newTemplate.subject}
+                        onChange={(e) => setNewTemplate({ ...newTemplate, subject: e.target.value })}
+                        placeholder="Partnership opportunity"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email Body (HTML)</Label>
+                      <Textarea
+                        value={newTemplate.body}
+                        onChange={(e) => setNewTemplate({ ...newTemplate, body: e.target.value })}
+                        placeholder="<p>Dear {{name}},</p><p>...</p>"
+                        rows={10}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Available placeholders: {"{{name}}"}, {"{{organization}}"}, {"{{position}}"}, {"{{email}}"}
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowAddTemplate(false)}>Cancel</Button>
+                    <Button onClick={handleAddTemplate}>Create Template</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Template library coming soon!</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Pre-built templates for universities, investors, and medical associations
-                </p>
-              </CardContent>
-            </Card>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : templates.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No templates yet. Save your first reusable message.</p>
+                  <Button className="mt-4 gap-2" onClick={() => setShowAddTemplate(true)}>
+                    <Plus className="h-4 w-4" />
+                    Create Template
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {templates.map((template) => (
+                  <Card key={template.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <CardTitle className="text-base">{template.name}</CardTitle>
+                          <CardDescription>{template.description || template.subject}</CardDescription>
+                        </div>
+                        <Badge variant="outline">{template.template_type}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Subject</p>
+                        <p className="text-sm">{template.subject}</p>
+                      </div>
+                      <div className="rounded-md border bg-muted/30 p-3 text-sm line-clamp-4">
+                        {template.body.replace(/<[^>]+>/g, ' ')}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => applyTemplateToCampaign(template)}>
+                          <Mail className="h-4 w-4 mr-2" />
+                          Use in Campaign
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTemplate(template.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
+
+        <Dialog open={!!previewCampaign} onOpenChange={(open) => !open && setPreviewCampaign(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{previewCampaign?.name}</DialogTitle>
+              <DialogDescription>{previewCampaign?.email_subject}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">Sender</p>
+                  <p>{previewCampaign?.sender_name} &lt;{previewCampaign?.sender_email}&gt;</p>
+                </div>
+                <div className="rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">Audience</p>
+                  <p>{previewCampaign?.target_audience?.join(', ') || 'All contacts'}</p>
+                </div>
+              </div>
+              <div className="rounded-md border bg-background p-4">
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewCampaign?.email_body || '') }}
+                />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
