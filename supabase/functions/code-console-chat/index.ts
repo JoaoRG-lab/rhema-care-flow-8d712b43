@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 type Agent = "chatgpt" | "codex" | "perplexity" | "custom";
+const MAX_PROMPT_CHARS = 12000;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -154,6 +155,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      return new Response(JSON.stringify({ error: `Prompt muito longo. Limite: ${MAX_PROMPT_CHARS} caracteres.` }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Rate limit
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -219,27 +226,43 @@ Deno.serve(async (req) => {
     let modelUsed = "";
     let citations: unknown = null;
 
-    if (agent === "chatgpt") {
-      modelUsed = "openai/gpt-5";
-      assistantContent = await callLovableGateway(modelUsed, systemBase, `Contexto da thread:\n${historyText}\n\nNova pergunta:\n${prompt}`);
-    } else if (agent === "codex") {
-      modelUsed = "openai/gpt-5.4";
-      assistantContent = await callLovableGateway(
-        modelUsed,
-        systemBase + " Modo Codex: priorize código completo, com tipos, tratamento de erro e testes mínimos.",
-        `Contexto:\n${historyText}\n\nTarefa de código:\n${prompt}`,
-      );
-    } else if (agent === "perplexity") {
-      modelUsed = "sonar-pro";
-      const r = await callPerplexity(`Contexto:\n${historyText}\n\nPergunta com fontes:\n${prompt}`);
-      assistantContent = r.content;
-      citations = r.citations;
-    } else {
-      modelUsed = CUSTOM_AI_MODEL ?? "custom";
-      assistantContent = await callCustom(systemBase, `Contexto:\n${historyText}\n\n${prompt}`);
+    let providerError: string | null = null;
+    try {
+      if (agent === "chatgpt") {
+        modelUsed = "openai/gpt-5";
+        assistantContent = await callLovableGateway(modelUsed, systemBase, `Contexto da thread:\n${historyText}\n\nNova pergunta:\n${prompt}`);
+      } else if (agent === "codex") {
+        modelUsed = "openai/gpt-5";
+        assistantContent = await callLovableGateway(
+          modelUsed,
+          systemBase + " Modo Codex: priorize código completo, com tipos, tratamento de erro e testes mínimos.",
+          `Contexto:\n${historyText}\n\nTarefa de código:\n${prompt}`,
+        );
+      } else if (agent === "perplexity") {
+        modelUsed = "sonar-pro";
+        const r = await callPerplexity(`Contexto:\n${historyText}\n\nPergunta com fontes:\n${prompt}`);
+        assistantContent = r.content;
+        citations = r.citations;
+      } else {
+        modelUsed = CUSTOM_AI_MODEL ?? "custom";
+        assistantContent = await callCustom(systemBase, `Contexto:\n${historyText}\n\n${prompt}`);
+      }
+    } catch (error) {
+      providerError = error instanceof Error ? error.message : String(error);
+      assistantContent = [
+        "Não consegui chamar o provedor configurado para este agente.",
+        "",
+        `Agente: ${agent}`,
+        `Modelo: ${modelUsed || "não definido"}`,
+        `Erro: ${providerError}`,
+        "",
+        "A thread foi preservada. Verifique secrets/modelo da Edge Function e tente novamente, ou escolha outro agente.",
+      ].join("\n");
     }
 
-    const warning = sentinelScan(assistantContent);
+    const warning = providerError
+      ? `Falha operacional do provedor: ${providerError}`
+      : sentinelScan(assistantContent);
 
     const { data: inserted, error: insErr } = await admin
       .from("code_console_messages")

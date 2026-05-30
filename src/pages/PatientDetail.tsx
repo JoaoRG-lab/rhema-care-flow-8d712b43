@@ -275,7 +275,7 @@ function ClinicalSignal({ icon, label, value, tone }: {
                   onScoreSaved={() => setRefreshKey(prev => prev + 1)}
                 />
                 <PatientReportExport patient={patient} />
-                <SharePatientCodeDialog patientCode={patient.patient_code}>
+                <SharePatientCodeDialog patientCode={patient.patient_code} mrnLast4={patient.mrn_last4}>
                   <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5">
                     <Share2 className="h-4 w-4" />
                     Prontuário

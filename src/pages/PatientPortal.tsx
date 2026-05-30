@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { format, addDays, isBefore, isToday, isTomorrow } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -224,6 +224,7 @@ function classifyPatientDraft(draft: string): { route: NonNullable<NetworkPost['
 
 export default function PatientPortal() {
   const { user } = useAuth();
+  const location = useLocation();
   const storageKey = `rhema:patient-portal:${user?.id ?? 'guest'}`;
   const defaultProfile = useMemo<PatientProfile>(() => ({
     preferredName: getInitialName(user?.email, user?.user_metadata?.full_name),
@@ -252,6 +253,12 @@ export default function PatientPortal() {
   const [activationError, setActivationError] = useState<string | null>(null);
   const [networkDraft, setNetworkDraft] = useState('');
   const [understoodLessons, setUnderstoodLessons] = useState<string[]>(() => getStored(`${storageKey}:understood-lessons`, []));
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('codigo')?.trim();
+    if (code) setActivationCode(code);
+  }, [location.search]);
 
   const loadPortal = async () => {
     setPortalLoading(true);

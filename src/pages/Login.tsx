@@ -10,10 +10,8 @@ import { UHSLogo } from '@/components/brand/UHSLogo';
 import { TrustBadge } from '@/components/brand/TrustBadges';
 import { Loader2, Shield, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { safeRedirect } from '@/lib/safeRedirect';
-
-const REDIRECT_KEY = 'uhs_post_login_redirect';
+import { describeOAuthError, startOAuthSignIn } from '@/lib/oauthSignIn';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -63,28 +61,14 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      try {
-        sessionStorage.setItem(REDIRECT_KEY, redirectTo);
-      } catch {
-        // OAuth still works if sessionStorage is unavailable.
-      }
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account',
-          },
-        },
-      });
+      const { error } = await startOAuthSignIn('google', redirectTo);
       if (error) {
-        toast.error(error.message);
+        toast.error(describeOAuthError(error));
         setGoogleLoading(false);
       }
       // If successful, the page will redirect
     } catch (err) {
-      toast.error('Failed to sign in with Google');
+      toast.error(describeOAuthError(err));
       setGoogleLoading(false);
     }
   };

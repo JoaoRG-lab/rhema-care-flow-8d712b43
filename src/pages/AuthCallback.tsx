@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Stethoscope } from "lucide-react";
 import { safeRedirect, isSafeInternalPath, buildRedirectQuery } from "@/lib/safeRedirect";
+import { clearPostLoginRedirect } from "@/lib/oauthSignIn";
 
 const REDIRECT_KEY = 'uhs_post_login_redirect';
 
@@ -41,11 +42,7 @@ export default function AuthCallback() {
 
     const finish = (target: string) => {
       if (cancelled) return;
-      try {
-        sessionStorage.removeItem(REDIRECT_KEY);
-      } catch {
-        /* ignore */
-      }
+      clearPostLoginRedirect();
       navigate(target, { replace: true });
     };
 
