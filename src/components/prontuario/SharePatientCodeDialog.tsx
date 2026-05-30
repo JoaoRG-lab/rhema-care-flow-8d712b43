@@ -5,15 +5,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Share2, Copy, Check, ShieldCheck, ExternalLink, QrCode, Eye } from 'lucide-react';
+import { Share2, Copy, Check, ShieldCheck, ExternalLink, QrCode, Eye, UserRoundCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProntuarioAccessLog } from '@/hooks/useSharedRecord';
-import { useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface SharePatientCodeDialogProps {
   patientCode: string;
+  mrnLast4?: string | null;
   children?: React.ReactNode;
 }
 
@@ -29,12 +29,13 @@ function QRCodeImage({ value }: { value: string }) {
   );
 }
 
-export function SharePatientCodeDialog({ patientCode, children }: SharePatientCodeDialogProps) {
+export function SharePatientCodeDialog({ patientCode, mrnLast4, children }: SharePatientCodeDialogProps) {
   const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState<'codigo' | 'log'>('codigo');
+  const [tab, setTab] = useState<'codigo' | 'portal' | 'log'>('codigo');
   const { logs, loading: logsLoading, fetchLogs } = useProntuarioAccessLog(patientCode);
 
   const prontuarioUrl = `${window.location.origin}/prontuario?codigo=${encodeURIComponent(patientCode)}`;
+  const patientPortalUrl = `${window.location.origin}/patient-portal?codigo=${encodeURIComponent(patientCode)}`;
 
   const copiarCodigo = () => {
     navigator.clipboard.writeText(patientCode);
@@ -46,6 +47,20 @@ export function SharePatientCodeDialog({ patientCode, children }: SharePatientCo
   const copiarLink = () => {
     navigator.clipboard.writeText(prontuarioUrl);
     toast.success('Link copiado!');
+  };
+
+  const copiarPortal = () => {
+    const instruction = [
+      'Acesse o Portal do Paciente:',
+      patientPortalUrl,
+      '',
+      `Codigo do paciente: ${patientCode}`,
+      mrnLast4 ? `Final do prontuario: ${mrnLast4}` : null,
+      '',
+      'Use esse acesso apenas se voce for o paciente ou cuidador autorizado.',
+    ].filter(Boolean).join('\n');
+    navigator.clipboard.writeText(instruction);
+    toast.success('Convite do portal copiado!');
   };
 
   const onOpenChange = (open: boolean) => {
@@ -73,7 +88,7 @@ export function SharePatientCodeDialog({ patientCode, children }: SharePatientCo
 
         {/* Tabs */}
         <div className="flex border-b border-border -mx-1">
-          {(['codigo', 'log'] as const).map(t => (
+          {(['codigo', 'portal', 'log'] as const).map(t => (
             <button
               key={t}
               onClick={() => { setTab(t); if (t === 'log') fetchLogs(); }}
@@ -83,7 +98,7 @@ export function SharePatientCodeDialog({ patientCode, children }: SharePatientCo
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {t === 'codigo' ? 'Código & QR' : 'Log de Acessos'}
+              {t === 'codigo' ? 'Código & QR' : t === 'portal' ? 'Portal do paciente' : 'Log de Acessos'}
             </button>
           ))}
         </div>
@@ -140,6 +155,58 @@ export function SharePatientCodeDialog({ patientCode, children }: SharePatientCo
               <span>
                 Apenas evoluções clínicas são visíveis. Nome, CPF e outros dados 
                 de identificação permanecem protegidos. Todos os acessos são auditados.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {tab === 'portal' && (
+          <div className="space-y-5 pt-1">
+            <p className="text-sm text-muted-foreground text-center">
+              Entregue este acesso ao paciente ou cuidador autorizado. O portal vincula o login a este paciente existente uma unica vez.
+            </p>
+
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <UserRoundCheck className="h-4 w-4 text-primary" />
+                Convite de ativacao
+              </div>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Link do portal</p>
+                  <div className="mt-1 flex items-center gap-2 rounded-md bg-background p-2">
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs">{patientPortalUrl}</span>
+                    <Button size="sm" variant="ghost" onClick={copiarPortal} className="h-7 w-7 p-0 shrink-0">
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => window.open(patientPortalUrl, '_blank')} className="h-7 w-7 p-0 shrink-0">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-background p-3">
+                    <p className="text-xs text-muted-foreground">Codigo</p>
+                    <p className="font-mono text-lg font-semibold tracking-wide">{patientCode}</p>
+                  </div>
+                  <div className="rounded-md bg-background p-3">
+                    <p className="text-xs text-muted-foreground">Final</p>
+                    <p className="font-mono text-lg font-semibold tracking-wide">{mrnLast4 || 'Nao usado'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button onClick={copiarPortal} className="w-full gap-2">
+              <Copy className="h-4 w-4" />
+              Copiar convite para o paciente
+            </Button>
+
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                O paciente nao cria outro cadastro clinico. Ele apenas reivindica este cartao existente. Se o paciente ja tiver sido vinculado, novas tentativas serao bloqueadas.
               </span>
             </div>
           </div>
