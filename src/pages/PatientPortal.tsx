@@ -374,7 +374,7 @@ export default function PatientPortal() {
       title: 'Registrar sintomas',
       detail: 'Dor, fadiga, rigidez e pergunta para consulta',
       due: new Date(),
-      type: 'selfcare',
+      type: 'selfcare' as const,
     },
   ].sort((a, b) => a.due.getTime() - b.due.getTime()), [medicationRows, portalData?.monitoring, portalData?.patient]);
 
