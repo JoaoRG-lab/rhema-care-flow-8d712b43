@@ -385,6 +385,22 @@ function ClinicalSignal({ icon, label, value, tone }: {
            </Card>
          )}
  
+         {/* POMR quick shortcuts */}
+         <div className="flex flex-wrap gap-2">
+           <Button asChild size="sm" variant="outline">
+             <a href={`/patients/${patient.id}/problems`}><ClipboardList className="h-4 w-4 mr-1" /> Problemas</a>
+           </Button>
+           <Button asChild size="sm" variant="outline">
+             <a href={`/patients/${patient.id}/scores`}><TrendingUp className="h-4 w-4 mr-1" /> Scores</a>
+           </Button>
+           <Button asChild size="sm" variant="outline">
+             <a href={`/patients/${patient.id}/therapeutic-safety`}><Shield className="h-4 w-4 mr-1" /> Segurança</a>
+           </Button>
+           <Button asChild size="sm" variant="outline">
+             <a href={`/prontuario?patient=${patient.id}`}><ClipboardPlus className="h-4 w-4 mr-1" /> Prontuário</a>
+           </Button>
+         </div>
+
          {/* Tabs for Visits and Scores */}
          <Tabs defaultValue="visits" className="space-y-4">
            <TabsList className="w-full">

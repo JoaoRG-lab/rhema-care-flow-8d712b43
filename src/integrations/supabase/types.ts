@@ -500,6 +500,62 @@ export type Database = {
           },
         ]
       }
+      clinical_timeline_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          patient_card_id: string | null
+          problem_id: string | null
+          reference_id: string | null
+          reference_table: string | null
+          specialty: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          patient_card_id?: string | null
+          problem_id?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          specialty?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          patient_card_id?: string | null
+          problem_id?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          specialty?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_timeline_events_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problem_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_console_messages: {
         Row: {
           agent: Database["public"]["Enums"]["code_console_agent"]
@@ -1826,6 +1882,160 @@ export type Database = {
         }
         Relationships: []
       }
+      problem_followups: {
+        Row: {
+          created_at: string
+          followup_date: string
+          id: string
+          metrics: Json
+          next_steps: string | null
+          note: string
+          patient_card_id: string | null
+          problem_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          followup_date?: string
+          id?: string
+          metrics?: Json
+          next_steps?: string | null
+          note: string
+          patient_card_id?: string | null
+          problem_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          followup_date?: string
+          id?: string
+          metrics?: Json
+          next_steps?: string | null
+          note?: string
+          patient_card_id?: string | null
+          problem_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_followups_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problem_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      problem_goals: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          metrics: Json
+          patient_card_id: string | null
+          problem_id: string
+          status: string
+          target_date: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          metrics?: Json
+          patient_card_id?: string | null
+          problem_id: string
+          status?: string
+          target_date?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          metrics?: Json
+          patient_card_id?: string | null
+          problem_id?: string
+          status?: string
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_goals_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problem_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      problem_instances: {
+        Row: {
+          created_at: string
+          id: string
+          linked_modules: Json
+          metadata: Json
+          onset_date: string | null
+          patient_card_id: string | null
+          problem_code: string
+          red_flags: Json
+          resolved_date: string | null
+          safety_flags: Json
+          severity: string | null
+          specialty: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          linked_modules?: Json
+          metadata?: Json
+          onset_date?: string | null
+          patient_card_id?: string | null
+          problem_code: string
+          red_flags?: Json
+          resolved_date?: string | null
+          safety_flags?: Json
+          severity?: string | null
+          specialty?: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          linked_modules?: Json
+          metadata?: Json
+          onset_date?: string | null
+          patient_card_id?: string | null
+          problem_code?: string
+          red_flags?: Json
+          resolved_date?: string | null
+          safety_flags?: Json
+          severity?: string | null
+          specialty?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2435,6 +2645,56 @@ export type Database = {
             columns: ["patient_card_id"]
             isOneToOne: false
             referencedRelation: "patient_cards_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      therapy_safety_checklists: {
+        Row: {
+          checklist: Json
+          created_at: string
+          flags: Json
+          id: string
+          notes: string | null
+          patient_card_id: string | null
+          problem_id: string | null
+          status: string
+          therapy: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checklist?: Json
+          created_at?: string
+          flags?: Json
+          id?: string
+          notes?: string | null
+          patient_card_id?: string | null
+          problem_id?: string | null
+          status?: string
+          therapy: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checklist?: Json
+          created_at?: string
+          flags?: Json
+          id?: string
+          notes?: string | null
+          patient_card_id?: string | null
+          problem_id?: string | null
+          status?: string
+          therapy?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapy_safety_checklists_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problem_instances"
             referencedColumns: ["id"]
           },
         ]
