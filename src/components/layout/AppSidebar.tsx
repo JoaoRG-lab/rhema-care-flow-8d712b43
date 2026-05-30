@@ -223,6 +223,20 @@ export function AppSidebar() {
             Repo Mirror
           </Link>
         )}
+        {isAdmin && (
+          <Link
+            to="/engine-ops"
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+              location.pathname === '/engine-ops'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+            )}
+          >
+            <Bot className="h-5 w-5" />
+            Engine Ops
+          </Link>
+        )}
         <Link
           to="/verification-request"
           className={cn(

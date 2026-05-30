@@ -17,6 +17,7 @@ import { PrescriptionComposer } from '../PrescriptionComposer';
 // jsdom doesn't implement scrollIntoView used by some Radix primitives
 beforeEach(() => {
   (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = vi.fn();
+  localStorage.clear();
 });
 
 function setup(overrides: Partial<React.ComponentProps<typeof PrescriptionComposer>> = {}) {

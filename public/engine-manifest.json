@@ -1,0 +1,49 @@
+{
+  "name": "Rhema AI Engine Mesh",
+  "canonicalRepo": "JoaoRG-lab/rhema-care-flow-8d712b43",
+  "canonicalDeploy": "https://rhema-care-flow.lovable.app/",
+  "policy": {
+    "mode": "proposal-first",
+    "autoDeploy": false,
+    "requiresAdrGate": true,
+    "minimumAdr": 0.9,
+    "noPhi": true
+  },
+  "environments": [
+    {
+      "id": "local-wsl",
+      "label": "Local WSL",
+      "role": "primary coding and validation motor",
+      "entrypoint": "npm run engine:local",
+      "gate": "npm run quality:gate"
+    },
+    {
+      "id": "huggingface-jobs",
+      "label": "Hugging Face Jobs",
+      "role": "external public-page and de-identified clinical audit bench",
+      "entrypoint": "scripts/hf_clinical_improvement_job.py",
+      "gate": "review-only proposals"
+    },
+    {
+      "id": "replit",
+      "label": "Replit Agent Site",
+      "role": "interactive coding mirror and UX recovery source",
+      "entrypoint": ".replit",
+      "gate": "no direct production deploy"
+    },
+    {
+      "id": "netlify",
+      "label": "Netlify Preview",
+      "role": "static preview and public artifact mirror",
+      "entrypoint": "netlify.toml",
+      "gate": "preview only unless main is green"
+    },
+    {
+      "id": "hex",
+      "label": "Hex Cloud Analytics",
+      "role": "analytics notebooks and bio/stat review from exported public metrics",
+      "entrypoint": "docs/HEX_ENGINE_WORKBENCH.md",
+      "gate": "no patient-identifying data"
+    }
+  ]
+}

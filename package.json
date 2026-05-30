@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "edge:check": "bash -lc 'PATH=\"$HOME/.deno/bin:$PATH\" deno check supabase/functions/send-report-email/index.ts supabase/functions/code-console-chat/index.ts supabase/functions/code-console-deploy/index.ts'",
+    "engine:local": "python3 scripts/rhema_continuous_engine.py --emit-handoff",
+    "engine:json": "python3 scripts/rhema_continuous_engine.py",
     "quality:gate": "python3 scripts/rhema_quality_gate.py",
     "quality:fast": "python3 scripts/rhema_quality_gate.py --fast",
     "test": "vitest run",

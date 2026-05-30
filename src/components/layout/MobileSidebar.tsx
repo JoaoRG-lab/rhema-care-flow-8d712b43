@@ -204,6 +204,9 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
             {isAdmin && (
               <NavLink path="/admin" label="Admin Panel" icon={ShieldCheck} />
             )}
+            {isAdmin && (
+              <NavLink path="/engine-ops" label="Engine Ops" icon={Bot} />
+            )}
             {footerLinks.map((item) => (
               <NavLink key={item.path} {...item} />
             ))}
