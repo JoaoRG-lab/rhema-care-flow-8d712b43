@@ -4,6 +4,33 @@ import App from "./App.tsx";
 import "./index.css";
 import { startLoopDetectorAuto } from "./lib/loopDetectorAutoStart";
 
+// Auto-recover from stale chunk hashes after a redeploy.
+// When index-*.js references a Landing-*.js (or any lazy chunk) that no longer
+// exists, the dynamic import throws. Force a one-time hard reload to pick up
+// the new manifest.
+const CHUNK_RELOAD_KEY = "uhs_chunk_reload_attempt";
+const isChunkLoadError = (msg: string) =>
+  /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk \d+ failed/i.test(
+    msg,
+  );
+const tryReload = () => {
+  try {
+    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || "0");
+    if (Date.now() - last < 10_000) return; // avoid infinite reload loop
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+  } catch {
+    // sessionStorage unavailable — still attempt reload once
+  }
+  window.location.reload();
+};
+window.addEventListener("error", (e) => {
+  if (e?.message && isChunkLoadError(e.message)) tryReload();
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const msg = e?.reason?.message || String(e?.reason || "");
+  if (isChunkLoadError(msg)) tryReload();
+});
+
 // Run the recurrence/loop detector continuously from app boot.
 startLoopDetectorAuto();
 
