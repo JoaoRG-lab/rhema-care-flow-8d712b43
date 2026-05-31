@@ -220,6 +220,7 @@ const App = () => (
                       <Route path="/settings/mirror" element={<ProtectedRoute><MirrorSettings /></ProtectedRoute>} />
                       {/* FIX: debug route now requires authentication */}
                       <Route path="/debug/loops" element={<ProtectedRoute><LoopDebug /></ProtectedRoute>} />
+                      <Route path="/ai-integration" element={<ProtectedRoute><AIIntegrationPage /></ProtectedRoute>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
