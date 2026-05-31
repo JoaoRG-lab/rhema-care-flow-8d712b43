@@ -20,6 +20,7 @@ const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
 const CUSTOM_AI_API_KEY = Deno.env.get("CUSTOM_AI_API_KEY");
 const CUSTOM_AI_BASE_URL = Deno.env.get("CUSTOM_AI_BASE_URL");
 const CUSTOM_AI_MODEL = Deno.env.get("CUSTOM_AI_MODEL");
+const CONSOLE_ALLOWED_EMAIL = (Deno.env.get("CONSOLE_ALLOWED_EMAIL") || "joaooz123@gmail.com").trim().toLowerCase();
 
 // Sentinel — destructive-code heuristics. Returns warning text or null.
 function sentinelScan(text: string): string | null {
@@ -123,6 +124,29 @@ async function callCustom(system: string, user: string): Promise<string> {
   return data?.choices?.[0]?.message?.content ?? "";
 }
 
+async function isConsoleAuthorized(
+  // Supabase Edge runtime does not expose generated RPC types in this function.
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  userId: string,
+  email?: string | null,
+): Promise<boolean> {
+  if (email?.toLowerCase() === CONSOLE_ALLOWED_EMAIL) return true;
+
+  const { data: lockedUltimate, error: lockedError } = await admin.rpc("is_locked_ultimate_user", {
+    target_user_id: userId,
+  });
+  if (lockedError) throw lockedError;
+  if (lockedUltimate) return true;
+
+  const { data: profileUltimate, error: profileError } = await admin.rpc("is_ultimate_user", {
+    _user_id: userId,
+  });
+  if (profileError) throw profileError;
+
+  return Boolean(profileUltimate);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -144,6 +168,14 @@ Deno.serve(async (req) => {
       });
     }
     const userId = userData.user.id;
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    if (!(await isConsoleAuthorized(admin, userId, userData.user.email))) {
+      return new Response(JSON.stringify({ error: "Code Console restrito ao usuário ultimate autorizado" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const body = await req.json();
     const threadId: string | undefined = body?.threadId;
@@ -163,7 +195,6 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: allowed } = await admin.rpc("check_rate_limit", {
       p_user_id: userId,
       p_endpoint: "code-console-chat",
