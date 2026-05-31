@@ -95,6 +95,7 @@ const PatientProblemsPage = lazy(() => import("./pages/PatientProblemsPage"));
 const ProblemDetailPage = lazy(() => import("./pages/ProblemDetailPage"));
 const PatientScoresPage = lazy(() => import("./pages/PatientScoresPage"));
 const PatientTherapeuticSafetyPage = lazy(() => import("./pages/PatientTherapeuticSafetyPage"));
+const AIIntegrationPage = lazy(() => import("./pages/AIIntegrationPage"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -219,6 +220,7 @@ const App = () => (
                       <Route path="/settings/mirror" element={<ProtectedRoute><MirrorSettings /></ProtectedRoute>} />
                       {/* FIX: debug route now requires authentication */}
                       <Route path="/debug/loops" element={<ProtectedRoute><LoopDebug /></ProtectedRoute>} />
+                      <Route path="/ai-integration" element={<ProtectedRoute><AIIntegrationPage /></ProtectedRoute>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
