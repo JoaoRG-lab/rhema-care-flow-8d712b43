@@ -50,6 +50,13 @@ export default function AuthCallback() {
       try {
         const target = resolveRedirect(searchParams);
         const code = searchParams.get('code');
+        const providerError =
+          searchParams.get('error_description') ||
+          searchParams.get('error');
+
+        if (providerError) {
+          throw new Error(providerError);
+        }
 
         // 1) Subscribe FIRST so we never miss the SIGNED_IN event Supabase
         //    emits after exchanging the OAuth tokens in the URL hash.

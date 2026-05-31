@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable';
 
 type OAuthProvider = 'google' | 'apple';
 
@@ -9,11 +8,6 @@ function oauthRedirectUrl(redirectTo: string): string {
   const callback = new URL('/auth/callback', window.location.origin);
   callback.searchParams.set('redirect', redirectTo);
   return callback.toString();
-}
-
-function shouldUseLovableBroker(): boolean {
-  const host = window.location.hostname;
-  return !['localhost', '127.0.0.1', '::1'].includes(host);
 }
 
 export function persistPostLoginRedirect(redirectTo: string) {
@@ -35,20 +29,6 @@ export function clearPostLoginRedirect() {
 export async function startOAuthSignIn(provider: OAuthProvider, redirectTo: string) {
   persistPostLoginRedirect(redirectTo);
   const redirectUri = oauthRedirectUrl(redirectTo);
-
-  if (shouldUseLovableBroker()) {
-    const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: redirectUri,
-      extraParams: {
-        access_type: 'offline',
-        prompt: 'select_account',
-      },
-    });
-
-    if (result.redirected) return { error: null, redirected: true };
-    if (result.error) return { error: result.error, redirected: false };
-    return { error: null, redirected: false };
-  }
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
