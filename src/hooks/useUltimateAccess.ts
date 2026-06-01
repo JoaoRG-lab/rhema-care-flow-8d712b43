@@ -34,7 +34,7 @@ export function useUltimateAccess(): UltimateAccessState {
         return;
       }
 
-      const [{ data: custody }, { data: profileUltimate }] = await Promise.all([
+      const [{ data: custody, error: custodyError }, { data: profileUltimate, error: profileError }] = await Promise.all([
         supabase
           .from("ultimate_user_custody")
           .select("id")
@@ -46,6 +46,12 @@ export function useUltimateAccess(): UltimateAccessState {
       ]);
 
       if (cancelled) return;
+
+      if (custodyError || profileError) {
+        console.warn("Failed to check ultimate access:", custodyError?.message ?? profileError?.message);
+        setState({ allowed: false, loading: false, reason: null });
+        return;
+      }
 
       if (custody) {
         setState({ allowed: true, loading: false, reason: "locked-ultimate" });
