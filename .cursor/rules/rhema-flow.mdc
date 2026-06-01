@@ -1,0 +1,79 @@
+---
+description: Rhema Flow engineering rules for Cursor agents
+globs:
+  - "src/**/*"
+  - "supabase/**/*"
+  - "scripts/**/*"
+  - "docs/**/*"
+  - ".github/**/*"
+alwaysApply: true
+---
+
+# Rhema Flow Cursor Rules
+
+You are assisting Codex and the human maintainer on `JoaoRG-lab/rhema-care-flow-8d712b43`.
+Treat GitHub `main` as the source of truth and `https://rhema-care-flow.lovable.app/` as the canonical app.
+
+## Non-Negotiables
+
+- Do not write secrets, PATs, service-role keys, OAuth client secrets, or Supabase access tokens into tracked files.
+- Do not commit directly to `main`; create a branch and PR.
+- Do not merge PRs, deploy manually, change DNS, rotate secrets, run Supabase migrations, or alter production data unless the target and authorization are explicit.
+- Preserve unrelated local changes. If a file is dirty and unrelated, leave it alone.
+- Keep clinical and patient-facing flows defensive: show user-readable errors, fail closed on access checks, and avoid silent button failures.
+
+## Required Verification
+
+Use Node 20+ when available, install dependencies from the lockfile, then run the robust check before proposing a PR:
+
+```bash
+npm ci
+npm run robust:check
+```
+
+If the full check is too slow while iterating, run the relevant subset first:
+
+```bash
+npx tsc --noEmit
+npm run lint
+npm test
+npm run edge:check
+npm run quality:gate
+npm run build
+```
+
+Report any skipped command and why.
+
+## Canonical Supabase
+
+Use the resolved exports from `src/integrations/supabase/client.ts`:
+
+```ts
+import { supabase, supabasePublishableKey, supabaseUrl } from "@/integrations/supabase/client";
+```
+
+Do not call Edge Functions with raw `import.meta.env.VITE_SUPABASE_URL` or raw publishable keys. This app guards against stale projects and must route through the canonical Supabase project.
+
+## Code Console And Agent Work
+
+- Code Console access belongs to locked/profile ultimate users, with `joaooz123@gmail.com` as the operational fallback.
+- Generated code must go through dry-run, SHA checks, PR, and review.
+- Agent output that changes files should include exact paths and minimal diffs.
+- Destructive operations must be rejected or escalated to the maintainer.
+
+## Clinical UI
+
+- Prefer useful empty states and actionable errors over generic "failed" text.
+- Buttons must either perform an action, navigate, copy with fallback, or explain why they are disabled.
+- Never expose PHI in logs, URLs, blockchain payloads, screenshots, or analytics.
+- For medical claims, add source notes in docs or data files; avoid hardcoding uncited clinical claims in UI copy.
+
+## PR Summary Template
+
+Include:
+
+- user-facing behavior changed;
+- files touched;
+- verification commands and results;
+- Supabase/Vercel/GitHub side effects, or explicitly "none";
+- remaining risks and follow-up path.
