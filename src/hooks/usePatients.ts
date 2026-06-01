@@ -15,17 +15,28 @@
    const [loading, setLoading] = useState(true);
  
    const fetchPatients = useCallback(async () => {
-     if (!user) return;
+     if (!user) {
+       setPatients([]);
+       setLoading(false);
+       return;
+     }
      setLoading(true);
-     const { data, error } = await supabase
-       .from('patient_cards_secure')
-       .select('*')
-       .eq('user_id', user.id)
-       .order('created_at', { ascending: false });
+     try {
+       const { data, error } = await supabase
+         .from('patient_cards_secure')
+         .select('*')
+         .eq('user_id', user.id)
+         .order('created_at', { ascending: false });
  
-     if (data) setPatients(data as PatientCard[]);
-     if (error) toast.error('Failed to load patients');
-     setLoading(false);
+       if (error) throw error;
+       setPatients((data ?? []) as PatientCard[]);
+     } catch (error) {
+       console.error('Failed to load patients:', error);
+       toast.error('Nao foi possivel carregar pacientes');
+       setPatients([]);
+     } finally {
+       setLoading(false);
+     }
    }, [user]);
  
    useEffect(() => {
