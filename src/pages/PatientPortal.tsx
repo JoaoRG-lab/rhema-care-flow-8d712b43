@@ -223,7 +223,7 @@ function classifyPatientDraft(draft: string): { route: NonNullable<NetworkPost['
 }
 
 export default function PatientPortal() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const location = useLocation();
   const storageKey = `rhema:patient-portal:${user?.id ?? 'guest'}`;
   const defaultProfile = useMemo<PatientProfile>(() => ({
@@ -261,6 +261,12 @@ export default function PatientPortal() {
   }, [location.search]);
 
   const loadPortal = async () => {
+    if (!user) {
+      setPortalData({ ok: false, error: 'auth_required' });
+      setPortalLoading(false);
+      return;
+    }
+
     setPortalLoading(true);
     const { data, error } = await supabase.rpc('get_my_patient_portal' as never);
     if (error) {
@@ -272,8 +278,9 @@ export default function PatientPortal() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     void loadPortal();
-  }, []);
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     const patient = portalData?.patient;
@@ -484,6 +491,16 @@ export default function PatientPortal() {
   };
 
   const claimPortal = async () => {
+    if (!user) {
+      setActivationError('Entre na sua conta antes de ativar o portal do paciente.');
+      return;
+    }
+
+    if (!activationCode.trim()) {
+      setActivationError('Informe o codigo do paciente recebido da equipe.');
+      return;
+    }
+
     setActivationError(null);
     setClaiming(true);
     const { data, error } = await supabase.rpc('claim_my_patient_portal' as never, {
@@ -513,7 +530,29 @@ export default function PatientPortal() {
     await loadPortal();
   };
 
-  if (portalLoading) {
+  const copyVisitSummary = async () => {
+    const summary = `Check-in Rhema: dor ${checkIn.pain}/10, fadiga ${checkIn.fatigue}/10, rigidez ${checkIn.stiffness} min. Nota: ${checkIn.note || 'sem nota'}`;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(summary);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = summary;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      toast.success('Resumo copiado');
+    } catch {
+      toast.error('Nao foi possivel copiar o resumo neste navegador');
+    }
+  };
+
+  if (authLoading || portalLoading) {
     return (
       <AppLayout>
         <div className="flex min-h-[60vh] items-center justify-center p-6">
@@ -974,8 +1013,7 @@ export default function PatientPortal() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => {
-                      void navigator.clipboard.writeText(`Check-in Rhema: dor ${checkIn.pain}/10, fadiga ${checkIn.fatigue}/10, rigidez ${checkIn.stiffness} min. Nota: ${checkIn.note || 'sem nota'}`);
-                      toast.success('Resumo copiado');
+                      void copyVisitSummary();
                     }}>
                       Copiar resumo
                     </Button>
