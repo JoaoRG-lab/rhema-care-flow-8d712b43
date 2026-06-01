@@ -1,25 +1,10 @@
-import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Terminal } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-
-const ALLOWED_EMAIL = "joaooz123@gmail.com";
+import { useUltimateAccess } from "@/hooks/useUltimateAccess";
 
 export default function CodeConsoleLauncher() {
-  const [allowed, setAllowed] = useState(false);
+  const { allowed } = useUltimateAccess();
   const location = useLocation();
-
-  useEffect(() => {
-    const check = async () => {
-      const { data } = await supabase.auth.getUser();
-      setAllowed(data.user?.email?.toLowerCase() === ALLOWED_EMAIL);
-    };
-    check();
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setAllowed(session?.user?.email?.toLowerCase() === ALLOWED_EMAIL);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
 
   if (!allowed) return null;
   if (location.pathname === "/code-console") return null;

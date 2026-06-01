@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function ProblemListPanel({ patientId }: Props) {
-  const specialty = (() => { try { return useSpecialty()?.specialtyId; } catch { return undefined; } })();
+  const { specialtyId } = useSpecialty();
   const { problems, loading, createProblem } = useProblems(patientId);
   const [adding, setAdding] = useState(false);
   const [code, setCode] = useState('');
@@ -24,7 +24,7 @@ export function ProblemListPanel({ patientId }: Props) {
   const [summary, setSummary] = useState('');
   const [severity, setSeverity] = useState<string>('moderate');
 
-  const catalog = getProblemsForSpecialty(specialty);
+  const catalog = getProblemsForSpecialty(specialtyId);
 
   const handleSelectCode = (c: string) => {
     setCode(c);
@@ -40,7 +40,7 @@ export function ProblemListPanel({ patientId }: Props) {
     const def = findProblemByCode(code);
     await createProblem({
       patient_card_id: patientId ?? null,
-      specialty: def?.specialty ?? specialty ?? 'general',
+      specialty: def?.specialty ?? specialtyId ?? 'general',
       problem_code: code.trim(),
       title: title.trim(),
       summary: summary.trim() || null,

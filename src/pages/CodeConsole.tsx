@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { AlertTriangle, Github, Plus, Rocket, Send, Sparkles, Trash2, Bot, Code2, Search, KeyRound, TerminalSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUltimateAccess } from "@/hooks/useUltimateAccess";
 
 type Agent = "user" | "chatgpt" | "codex" | "perplexity" | "custom" | "sentinel";
 
@@ -142,7 +143,8 @@ async function readFunctionError(error: unknown, data?: { error?: unknown } | nu
 
 export default function CodeConsole() {
   const { user } = useAuth();
-  const allowed = user?.email?.toLowerCase() === ALLOWED_EMAIL;
+  const ultimateAccess = useUltimateAccess();
+  const allowed = ultimateAccess.allowed;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -195,6 +197,10 @@ export default function CodeConsole() {
   }, [messages, busy]);
 
   async function createThread() {
+    if (!user) {
+      toast.error("Faça login antes de criar uma sessão.");
+      return;
+    }
     const { data, error } = await supabase
       .from("code_console_threads")
       .insert({ title: "Nova sessão", user_id: user!.id })
@@ -272,9 +278,21 @@ export default function CodeConsole() {
     if (!target || target.agent === "user") return;
     if (target.destructive_warning && !confirm("Esta resposta foi marcada como potencialmente destrutiva. Promover mesmo assim?")) return;
     // Unset previous promoted in this thread; set this one; set deploy_agent on thread
-    await supabase.from("code_console_messages").update({ promoted_for_deploy: false }).eq("thread_id", activeId!);
-    await supabase.from("code_console_messages").update({ promoted_for_deploy: true }).eq("id", messageId);
-    await supabase.from("code_console_threads").update({ deploy_agent: target.agent }).eq("id", activeId!);
+    const unset = await supabase.from("code_console_messages").update({ promoted_for_deploy: false }).eq("thread_id", activeId!);
+    if (unset.error) {
+      toast.error(unset.error.message);
+      return;
+    }
+    const promoteResult = await supabase.from("code_console_messages").update({ promoted_for_deploy: true }).eq("id", messageId);
+    if (promoteResult.error) {
+      toast.error(promoteResult.error.message);
+      return;
+    }
+    const threadResult = await supabase.from("code_console_threads").update({ deploy_agent: target.agent }).eq("id", activeId!);
+    if (threadResult.error) {
+      toast.error(threadResult.error.message);
+      return;
+    }
     toast.success(`Promovido para deploy: ${target.agent}`);
     const { data: refreshed } = await supabase
       .from("code_console_messages")
@@ -351,6 +369,18 @@ export default function CodeConsole() {
   function saveGithubUrl(v: string) {
     setGithubUrl(v);
     localStorage.setItem("cc.githubUrl", v);
+  }
+
+  if (ultimateAccess.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-8 text-sm text-muted-foreground">
+            Verificando privilégios ultimate...
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!allowed) {
