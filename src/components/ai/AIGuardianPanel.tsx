@@ -21,6 +21,7 @@ import {
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { copyText } from '@/lib/clipboard';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 
@@ -135,9 +136,10 @@ export function AIGuardianPanel() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
+  const copyToClipboard = async (text: string) => {
+    const ok = await copyText(text);
+    if (ok) toast.success('Copied to clipboard');
+    else toast.error('Nao foi possivel copiar');
   };
 
   return (

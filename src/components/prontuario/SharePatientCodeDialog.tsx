@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useProntuarioAccessLog } from '@/hooks/useSharedRecord';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { copyText } from '@/lib/clipboard';
 
 interface SharePatientCodeDialogProps {
   patientCode: string;
@@ -37,19 +38,24 @@ export function SharePatientCodeDialog({ patientCode, mrnLast4, children }: Shar
   const prontuarioUrl = `${window.location.origin}/prontuario?codigo=${encodeURIComponent(patientCode)}`;
   const patientPortalUrl = `${window.location.origin}/patient-portal?codigo=${encodeURIComponent(patientCode)}`;
 
-  const copiarCodigo = () => {
-    navigator.clipboard.writeText(patientCode);
+  const copiarCodigo = async () => {
+    const ok = await copyText(patientCode);
+    if (!ok) {
+      toast.error('Nao foi possivel copiar o codigo');
+      return;
+    }
     setCopied(true);
     toast.success('Código copiado!');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const copiarLink = () => {
-    navigator.clipboard.writeText(prontuarioUrl);
-    toast.success('Link copiado!');
+  const copiarLink = async () => {
+    const ok = await copyText(prontuarioUrl);
+    if (ok) toast.success('Link copiado!');
+    else toast.error('Nao foi possivel copiar o link');
   };
 
-  const copiarPortal = () => {
+  const copiarPortal = async () => {
     const instruction = [
       'Acesse o Portal do Paciente:',
       patientPortalUrl,
@@ -59,8 +65,9 @@ export function SharePatientCodeDialog({ patientCode, mrnLast4, children }: Shar
       '',
       'Use esse acesso apenas se voce for o paciente ou cuidador autorizado.',
     ].filter(Boolean).join('\n');
-    navigator.clipboard.writeText(instruction);
-    toast.success('Convite do portal copiado!');
+    const ok = await copyText(instruction);
+    if (ok) toast.success('Convite do portal copiado!');
+    else toast.error('Nao foi possivel copiar o convite do portal');
   };
 
   const onOpenChange = (open: boolean) => {

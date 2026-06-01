@@ -19,6 +19,7 @@ import {
   Link2,
   BookOpen,
 } from 'lucide-react';
+import { copyText } from '@/lib/clipboard';
 
 const STORAGE_KEY = 'uhs.research-hub.context';
 
@@ -65,8 +66,9 @@ export default function ResearchHub() {
 
   const copyContext = async () => {
     const payload = `Topic: ${ctx.topic || '(none)'}\n\nNotes:\n${ctx.notes || '(empty)'}`;
-    await navigator.clipboard.writeText(payload);
-    toast.success('Context copied — paste into NotebookLM, Perplexity, or GitHub');
+    const ok = await copyText(payload);
+    if (ok) toast.success('Context copied — paste into NotebookLM, Perplexity, or GitHub');
+    else toast.error('Nao foi possivel copiar o contexto');
   };
 
   const perplexityUrl = ctx.topic

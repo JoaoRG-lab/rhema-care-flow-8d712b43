@@ -13,6 +13,7 @@ import { AlertTriangle, Github, Plus, Rocket, Send, Sparkles, Trash2, Bot, Code2
 import { cn } from "@/lib/utils";
 import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { useUltimateAccess } from "@/hooks/useUltimateAccess";
+import { copyText } from "@/lib/clipboard";
 
 type Agent = "user" | "chatgpt" | "codex" | "perplexity" | "custom" | "sentinel";
 
@@ -604,9 +605,10 @@ export default function CodeConsole() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => {
-                              void navigator.clipboard.writeText(m.content);
-                              toast.success("Copiado");
+                            onClick={async () => {
+                              const copied = await copyText(m.content);
+                              if (copied) toast.success("Copiado");
+                              else toast.error("Nao foi possivel copiar neste navegador");
                             }}
                           >
                             Copiar

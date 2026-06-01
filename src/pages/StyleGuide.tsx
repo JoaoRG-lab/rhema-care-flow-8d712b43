@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { CodeBlock } from "@/components/ui/CodeBlock";
+import { copyText } from "@/lib/clipboard";
 
 const CSS_VARIABLES_CONTENT = `/* RheumaFlow Design System - CSS Variables */
 
@@ -477,7 +478,11 @@ const CopyButton = ({ value, label }: { value: string; label?: string }) => {
   const [copied, setCopied] = useState(false);
   
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(value);
+    const ok = await copyText(value);
+    if (!ok) {
+      toast.error("Nao foi possivel copiar");
+      return;
+    }
     setCopied(true);
     toast.success(`Copied ${label || value}`);
     setTimeout(() => setCopied(false), 2000);
@@ -658,7 +663,11 @@ const ShadowCard = ({ name, description }: { name: string; description: string }
   };
 
   const handleCopyPreview = async () => {
-    await navigator.clipboard.writeText(getPreviewContent());
+    const ok = await copyText(getPreviewContent());
+    if (!ok) {
+      toast.error("Nao foi possivel copiar");
+      return;
+    }
     setCopied(true);
     toast.success("Copied to clipboard");
     setTimeout(() => setCopied(false), 2000);

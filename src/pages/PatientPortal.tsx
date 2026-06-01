@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { SessionList } from '@/components/consultations/SessionList';
+import { copyText } from '@/lib/clipboard';
 
 type CheckIn = {
   pain: number;
@@ -532,24 +533,9 @@ export default function PatientPortal() {
 
   const copyVisitSummary = async () => {
     const summary = `Check-in Rhema: dor ${checkIn.pain}/10, fadiga ${checkIn.fatigue}/10, rigidez ${checkIn.stiffness} min. Nota: ${checkIn.note || 'sem nota'}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(summary);
-      } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = summary;
-        textArea.setAttribute('readonly', '');
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
-      toast.success('Resumo copiado');
-    } catch {
-      toast.error('Nao foi possivel copiar o resumo neste navegador');
-    }
+    const copied = await copyText(summary);
+    if (copied) toast.success('Resumo copiado');
+    else toast.error('Nao foi possivel copiar o resumo neste navegador');
   };
 
   if (authLoading || portalLoading) {
