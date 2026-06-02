@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
@@ -141,13 +141,13 @@ export default function AdminBilling() {
   // Date range bounds (inclusive). dateTo is end-of-day.
   const fromTs = useMemo(() => (dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null), [dateFrom]);
   const toTs = useMemo(() => (dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : null), [dateTo]);
-  const inRange = (iso: string | null | undefined) => {
+  const inRange = useCallback((iso: string | null | undefined) => {
     if (!iso) return fromTs === null && toTs === null;
     const t = new Date(iso).getTime();
     if (fromTs !== null && t < fromTs) return false;
     if (toTs !== null && t > toTs) return false;
     return true;
-  };
+  }, [fromTs, toTs]);
 
   const filteredTx = useMemo(
     () =>
@@ -160,7 +160,7 @@ export default function AdminBilling() {
             (t.external_id ?? "").toLowerCase().includes(f) ||
             t.status.toLowerCase().includes(f))
       ),
-    [transactions, f, fromTs, toTs]
+    [transactions, f, inRange]
   );
   const filteredCredits = useMemo(
     () =>
@@ -170,7 +170,7 @@ export default function AdminBilling() {
           (fromTs === null && toTs === null ? true : inRange(c.quota_reset_at)) &&
           (!f || c.user_id.toLowerCase().includes(f))
       ),
-    [credits, f, fromTs, toTs]
+    [credits, f, fromTs, toTs, inRange]
   );
   const filteredIdem = useMemo(
     () =>
@@ -181,7 +181,7 @@ export default function AdminBilling() {
             i.user_id.toLowerCase().includes(f) ||
             i.idempotency_key.toLowerCase().includes(f))
       ),
-    [idem, f, fromTs, toTs]
+    [idem, f, inRange]
   );
 
   // User search across all loaded data + profiles
