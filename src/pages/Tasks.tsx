@@ -1,4 +1,4 @@
- import { useEffect, useState } from 'react';
+ import { useCallback, useEffect, useState } from 'react';
  import { AppLayout } from '@/components/layout/AppLayout';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@
    const [priority, setPriority] = useState('medium');
    const [dueDate, setDueDate] = useState('');
  
-   const fetchTasks = async () => {
+   const fetchTasks = useCallback(async () => {
      if (!user) return;
      const { data, error } = await supabase
        .from('tasks')
@@ -54,11 +54,11 @@
      if (data) setTasks(data);
      if (error) toast.error('Failed to load tasks');
      setLoading(false);
-   };
- 
+   }, [user]);
+
    useEffect(() => {
      fetchTasks();
-   }, [user]);
+   }, [fetchTasks]);
  
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
@@ -92,9 +92,9 @@
      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
      const { error } = await supabase
        .from('tasks')
-       .update({ 
-         status: newStatus, 
-         completed_at: newStatus === 'completed' ? new Date().toISOString() : null 
+       .update({
+         status: newStatus,
+         completed_at: newStatus === 'completed' ? new Date().toISOString() : null
        })
        .eq('id', task.id);
  
@@ -115,7 +115,7 @@
      }
    };
  
-   const filteredTasks = tasks.filter(t => 
+   const filteredTasks = tasks.filter(t =>
      selectedCategory === 'all' || t.category === selectedCategory
    );
  
