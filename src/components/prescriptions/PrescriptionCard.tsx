@@ -10,10 +10,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PrescriptionSignDialog } from './PrescriptionSignDialog';
-import {
-  PrescriptionDebugPanel,
-  isPrescriptionDebugEnabled,
-} from './PrescriptionDebugPanel';
+import { PrescriptionDebugPanel } from './PrescriptionDebugPanel';
+import { isPrescriptionDebugEnabled } from '@/lib/prescriptionDebug';
 import { generatePrescriptionPdf } from '@/lib/prescriptionPdfExport';
 import type { Prescription } from '@/hooks/usePrescriptions';
 import {
