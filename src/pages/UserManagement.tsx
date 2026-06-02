@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,12 +41,18 @@ export default function UserManagement() {
   const [roleBusy, setRoleBusy] = useState(false);
   const [roleRows, setRoleRows] = useState<RoleRow[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   const loadRoles = useCallback(async () => {
     setRolesLoading(true);
     const { data, error } = await invokeEdgeFn<{ rows: RoleRow[] }>('admin-set-role', { action: 'list' });
-    if (error) toast.error(error);
-    else setRoleRows(data?.rows ?? []);
+    if (error) {
+      setRoleError(error);
+      toast.error(error);
+    } else {
+      setRoleError(null);
+      setRoleRows(data?.rows ?? []);
+    }
     setRolesLoading(false);
   }, []);
 
@@ -55,8 +61,12 @@ export default function UserManagement() {
     const r = roleArg ?? roleValue;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) return toast.error('Email inválido');
     setRoleBusy(true);
+    setRoleError(null);
     const { error } = await invokeEdgeFn('admin-set-role', { action, email: target, role: r });
-    if (error) toast.error(error);
+    if (error) {
+      setRoleError(error);
+      toast.error(error);
+    }
     else {
       toast.success(action === 'grant' ? `Role "${r}" concedida para ${target}` : `Role "${r}" removida de ${target}`);
       loadRoles();
@@ -427,6 +437,21 @@ export default function UserManagement() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
+            {roleError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Gerenciamento de roles indisponível</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <span className="block">{roleError}</span>
+                  {/nao encontrada|não encontrada|not found|404/i.test(roleError) && (
+                    <span className="block">
+                      A função existe em supabase/functions/admin-set-role, mas ainda precisa estar ativa no Supabase canônico.
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto_auto]">
               <div className="space-y-1">
                 <Label htmlFor="role-email">Email do usuário</Label>

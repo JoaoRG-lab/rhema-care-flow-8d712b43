@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -126,6 +127,7 @@ export default function OutreachCRM() {
   const [templates, setTemplates] = useState<OutreachTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [campaignRuntimeError, setCampaignRuntimeError] = useState<string | null>(null);
 
   // Dialog states
   const [showAddContact, setShowAddContact] = useState(false);
@@ -289,6 +291,7 @@ export default function OutreachCRM() {
 
   const handleSendCampaign = async (campaignId: string, testMode = false, testEmail = '') => {
     setSending(true);
+    setCampaignRuntimeError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -308,7 +311,9 @@ export default function OutreachCRM() {
         throw new Error(result.error || 'Send failed');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to send campaign');
+      const message = err.message || 'Failed to send campaign';
+      setCampaignRuntimeError(message);
+      toast.error(message);
     } finally {
       setSending(false);
     }
@@ -368,6 +373,21 @@ export default function OutreachCRM() {
             </p>
           </div>
         </div>
+
+        {campaignRuntimeError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Envio de campanha indisponível</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <span className="block">{campaignRuntimeError}</span>
+              {/nao encontrada|não encontrada|not found|404/i.test(campaignRuntimeError) && (
+                <span className="block">
+                  A função existe em supabase/functions/send-outreach-campaign, mas ainda precisa estar ativa no Supabase canônico.
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
