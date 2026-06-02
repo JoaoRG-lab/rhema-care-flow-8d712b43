@@ -60,7 +60,7 @@ export function AIResearchDashboard() {
   const [pipelineItems, setPipelineItems] = useState<PipelineItem[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, inQueue: 0 });
-  const { isLoading, performResearch, generateArticle, verifyContent, batchProcess } = useAIResearch();
+  const { isLoading, error, performResearch, generateArticle, verifyContent, batchProcess } = useAIResearch();
 
   useEffect(() => {
     fetchData();
@@ -252,6 +252,14 @@ export function AIResearchDashboard() {
           </Button>
         </div>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>AI Research runtime indisponível</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

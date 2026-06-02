@@ -79,6 +79,7 @@ export function QualityAssurancePanel() {
     isJudging,
     isMonitoring,
     alerts,
+    runtimeError,
     batchJudge,
     runSentinelPatrol,
     fetchAlerts,
@@ -147,6 +148,14 @@ export function QualityAssurancePanel() {
           Refresh
         </Button>
       </div>
+
+      {runtimeError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>AI Quality runtime indisponível</AlertTitle>
+          <AlertDescription>{runtimeError}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4">

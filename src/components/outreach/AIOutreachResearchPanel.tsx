@@ -21,8 +21,10 @@ import {
   Sparkles,
   Send,
   Users,
+  AlertCircle,
 } from 'lucide-react';
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
+import { getEdgeFunctionDeploymentHint } from '@/lib/edgeFunctionDiagnostics';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -76,6 +78,7 @@ export function AIOutreachResearchPanel({ onComplete }: AIOutreachResearchPanelP
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ResearchResult | null>(null);
   const [currentStep, setCurrentStep] = useState('');
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev =>
@@ -92,6 +95,7 @@ export function AIOutreachResearchPanel({ onComplete }: AIOutreachResearchPanelP
     setIsResearching(true);
     setProgress(0);
     setResults(null);
+    setRuntimeError(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -109,6 +113,7 @@ export function AIOutreachResearchPanel({ onComplete }: AIOutreachResearchPanelP
 
         if (error) {
           console.error(`Error researching ${category}:`, error);
+          setRuntimeError(error);
           allResults.errors?.push(`Failed to research ${category}: ${error}`);
         } else if (data) {
           allResults.found += data.found || 0;
@@ -124,11 +129,22 @@ export function AIOutreachResearchPanel({ onComplete }: AIOutreachResearchPanelP
 
       setResults(allResults);
       setCurrentStep('Research complete!');
-      toast.success(`Found ${allResults.found} contacts, saved ${allResults.saved} new ones!`);
-      onComplete();
+      if (allResults.errors?.length && allResults.found === 0 && allResults.saved === 0) {
+        const firstError = allResults.errors[0]?.replace(/^Failed to research [^:]+: /, '') || 'Research failed';
+        setRuntimeError(firstError);
+        toast.error(firstError);
+      } else if (allResults.errors?.length) {
+        toast.warning(`Research completed with ${allResults.errors.length} warning(s).`);
+        onComplete();
+      } else {
+        toast.success(`Found ${allResults.found} contacts, saved ${allResults.saved} new ones!`);
+        onComplete();
+      }
     } catch (err: any) {
       console.error('Research error:', err);
-      toast.error(err.message || 'Research failed');
+      const message = err.message || 'Research failed';
+      setRuntimeError(message);
+      toast.error(message);
     } finally {
       setIsResearching(false);
     }
@@ -148,6 +164,19 @@ export function AIOutreachResearchPanel({ onComplete }: AIOutreachResearchPanelP
           </p>
         </div>
       </div>
+
+      {runtimeError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Motor de pesquisa indisponível</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <span className="block">{runtimeError}</span>
+            {getEdgeFunctionDeploymentHint('ai-research-outreach', runtimeError) && (
+              <span className="block">{getEdgeFunctionDeploymentHint('ai-research-outreach', runtimeError)}</span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Category Selection */}
       <Card>

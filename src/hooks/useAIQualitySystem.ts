@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
+import { describeEdgeFunctionRuntimeError } from '@/lib/edgeFunctionDiagnostics';
 import { toast } from 'sonner';
 
 interface JudgeResult {
@@ -40,12 +41,25 @@ export function useAIQualitySystem() {
   const [isJudging, setIsJudging] = useState(false);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [alerts, setAlerts] = useState<SentinelAlert[]>([]);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+
+  const reportRuntimeError = useCallback((functionName: string, err: unknown, fallback: string) => {
+    const message = describeEdgeFunctionRuntimeError(
+      functionName,
+      err instanceof Error ? err.message : '',
+      fallback
+    );
+    setRuntimeError(message);
+    toast.error(message);
+    return message;
+  }, []);
 
   const judgeContent = useCallback(async (
     pipelineId: string, 
     adminEmail?: string
   ): Promise<JudgeResult | null> => {
     setIsJudging(true);
+    setRuntimeError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-judge', { action: 'judge', pipeline_id: pipelineId, admin_email: adminEmail });
 
@@ -60,15 +74,16 @@ export function useAIQualitySystem() {
       return data as JudgeResult;
     } catch (err) {
       console.error('Judge error:', err);
-      toast.error('Failed to judge content');
+      reportRuntimeError('ai-judge', err, 'Failed to judge content');
       return null;
     } finally {
       setIsJudging(false);
     }
-  }, []);
+  }, [reportRuntimeError]);
 
   const batchJudge = useCallback(async (adminEmail?: string) => {
     setIsJudging(true);
+    setRuntimeError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-judge', { action: 'batch_judge', admin_email: adminEmail });
 
@@ -81,18 +96,19 @@ export function useAIQualitySystem() {
       return data;
     } catch (err) {
       console.error('Batch judge error:', err);
-      toast.error('Failed to batch judge');
+      reportRuntimeError('ai-judge', err, 'Failed to batch judge');
       return null;
     } finally {
       setIsJudging(false);
     }
-  }, []);
+  }, [reportRuntimeError]);
 
   const monitorContent = useCallback(async (
     contentId?: string,
     pipelineId?: string
   ): Promise<SentinelResult | null> => {
     setIsMonitoring(true);
+    setRuntimeError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-sentinel', { action: 'monitor', content_id: contentId, pipeline_id: pipelineId });
 
@@ -107,15 +123,16 @@ export function useAIQualitySystem() {
       return data as SentinelResult;
     } catch (err) {
       console.error('Sentinel error:', err);
-      toast.error('Failed to monitor content');
+      reportRuntimeError('ai-sentinel', err, 'Failed to monitor content');
       return null;
     } finally {
       setIsMonitoring(false);
     }
-  }, []);
+  }, [reportRuntimeError]);
 
   const runSentinelPatrol = useCallback(async () => {
     setIsMonitoring(true);
+    setRuntimeError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-sentinel', { action: 'patrol' });
 
@@ -126,12 +143,12 @@ export function useAIQualitySystem() {
       return data;
     } catch (err) {
       console.error('Patrol error:', err);
-      toast.error('Sentinel patrol failed');
+      reportRuntimeError('ai-sentinel', err, 'Sentinel patrol failed');
       return null;
     } finally {
       setIsMonitoring(false);
     }
-  }, []);
+  }, [reportRuntimeError]);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -142,6 +159,11 @@ export function useAIQualitySystem() {
       return data.alerts;
     } catch (err) {
       console.error('Fetch alerts error:', err);
+      setRuntimeError(describeEdgeFunctionRuntimeError(
+        'ai-sentinel',
+        err instanceof Error ? err.message : '',
+        'Failed to fetch sentinel alerts'
+      ));
       return [];
     }
   }, []);
@@ -173,6 +195,7 @@ export function useAIQualitySystem() {
     isJudging,
     isMonitoring,
     alerts,
+    runtimeError,
     judgeContent,
     batchJudge,
     monitorContent,
