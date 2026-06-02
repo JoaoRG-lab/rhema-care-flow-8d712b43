@@ -118,10 +118,26 @@ const AGENT_META: Record<
 const ALLOWED_EMAIL = "joaooz123@gmail.com";
 
 function edgeInvokeError(error: string | null, data: unknown): string | null {
-  if (error) return error;
+  if (error) return formatConsoleRuntimeError(error);
   const payload = data as { error?: unknown } | null;
-  if (payload?.error) return String(payload.error);
+  if (payload?.error) return formatConsoleRuntimeError(String(payload.error));
   return null;
+}
+
+function formatConsoleRuntimeError(raw: string): string {
+  if (/code_console_|relation .*does not exist|schema cache/i.test(raw)) {
+    return 'Estrutura do Code Console não encontrada no Supabase. Aplique as tabelas/funções do console no projeto correto antes de usar este módulo.';
+  }
+
+  if (/não foi possível alcançar a edge function|failed to fetch|networkerror|load failed/i.test(raw)) {
+    return raw;
+  }
+
+  if (/jwt|authorization|unauthorized|forbidden|not allowed/i.test(raw)) {
+    return `Acesso negado pelo Supabase/Edge Function: ${raw}`;
+  }
+
+  return raw;
 }
 
 export default function CodeConsole() {
@@ -136,8 +152,15 @@ export default function CodeConsole() {
   const [busy, setBusy] = useState(false);
   const [deploymentPlans, setDeploymentPlans] = useState<Record<string, DeploymentPlan>>({});
   const [deployingId, setDeployingId] = useState<string | null>(null);
+  const [consoleError, setConsoleError] = useState<string | null>(null);
   const [githubUrl, setGithubUrl] = useState(localStorage.getItem("cc.githubUrl") ?? "");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  function reportConsoleError(raw: string) {
+    const message = formatConsoleRuntimeError(raw);
+    setConsoleError(message);
+    toast.error(message);
+  }
 
   // Load threads
   useEffect(() => {
@@ -148,9 +171,10 @@ export default function CodeConsole() {
         .select("id, title, deploy_agent, updated_at")
         .order("updated_at", { ascending: false });
       if (error) {
-        toast.error(error.message);
+        reportConsoleError(error.message);
         return;
       }
+      setConsoleError(null);
       setThreads(data as Thread[]);
       if (!activeId && data && data.length > 0) setActiveId(data[0].id);
       if (data && data.length === 0) await createThread();
@@ -168,9 +192,10 @@ export default function CodeConsole() {
         .eq("thread_id", activeId)
         .order("created_at", { ascending: true });
       if (error) {
-        toast.error(error.message);
+        reportConsoleError(error.message);
         return;
       }
+      setConsoleError(null);
       setMessages(data as Message[]);
     })();
   }, [activeId]);
@@ -190,9 +215,10 @@ export default function CodeConsole() {
       .select()
       .single();
     if (error) {
-      toast.error(error.message);
+      reportConsoleError(error.message);
       return;
     }
+    setConsoleError(null);
     setThreads((t) => [data as Thread, ...t]);
     setActiveId((data as Thread).id);
     setMessages([]);
@@ -202,9 +228,10 @@ export default function CodeConsole() {
     if (!confirm("Apagar esta sessão e todas as mensagens?")) return;
     const { error } = await supabase.from("code_console_threads").delete().eq("id", id);
     if (error) {
-      toast.error(error.message);
+      reportConsoleError(error.message);
       return;
     }
+    setConsoleError(null);
     setThreads((t) => t.filter((x) => x.id !== id));
     if (activeId === id) {
       setActiveId(null);
@@ -239,9 +266,10 @@ export default function CodeConsole() {
     const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
-      toast.error(invokeError);
+      reportConsoleError(invokeError);
       return;
     }
+    setConsoleError(null);
     // Re-fetch (gets user msg + assistant msg in correct order)
     const { data: refreshed } = await supabase
       .from("code_console_messages")
@@ -265,19 +293,20 @@ export default function CodeConsole() {
     // Unset previous promoted in this thread; set this one; set deploy_agent on thread
     const unset = await supabase.from("code_console_messages").update({ promoted_for_deploy: false }).eq("thread_id", activeId!);
     if (unset.error) {
-      toast.error(unset.error.message);
+      reportConsoleError(unset.error.message);
       return;
     }
     const promoteResult = await supabase.from("code_console_messages").update({ promoted_for_deploy: true }).eq("id", messageId);
     if (promoteResult.error) {
-      toast.error(promoteResult.error.message);
+      reportConsoleError(promoteResult.error.message);
       return;
     }
     const threadResult = await supabase.from("code_console_threads").update({ deploy_agent: target.agent }).eq("id", activeId!);
     if (threadResult.error) {
-      toast.error(threadResult.error.message);
+      reportConsoleError(threadResult.error.message);
       return;
     }
+    setConsoleError(null);
     toast.success(`Promovido para deploy: ${target.agent}`);
     const { data: refreshed } = await supabase
       .from("code_console_messages")
@@ -299,9 +328,10 @@ export default function CodeConsole() {
     setDeployingId(null);
     const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
-      toast.error(invokeError);
+      reportConsoleError(invokeError);
       return;
     }
+    setConsoleError(null);
     const files = (data?.files ?? []) as DeploymentFile[];
     setDeploymentPlans((plans) => ({
       ...plans,
@@ -333,9 +363,10 @@ export default function CodeConsole() {
     setDeployingId(null);
     const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
-      toast.error(invokeError);
+      reportConsoleError(invokeError);
       return;
     }
+    setConsoleError(null);
     const result = data as DeploymentResult;
     const prText = result.pullRequest ? ` PR #${result.pullRequest.number} aberto.` : "";
     toast.success(`Commit ${result.commitSha.slice(0, 7)} criado em ${result.branch}.${prText}`);
@@ -419,6 +450,22 @@ export default function CodeConsole() {
             </Button>
           </div>
         </div>
+
+        {consoleError && (
+          <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>{consoleError}</span>
+            </div>
+            <button
+              type="button"
+              className="text-xs font-medium underline underline-offset-2"
+              onClick={() => setConsoleError(null)}
+            >
+              dispensar
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
           {/* Sidebar threads */}

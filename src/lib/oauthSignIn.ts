@@ -4,10 +4,8 @@ type OAuthProvider = 'google' | 'apple';
 
 const REDIRECT_KEY = 'uhs_post_login_redirect';
 
-function oauthRedirectUrl(redirectTo: string): string {
-  const callback = new URL('/auth/callback', window.location.origin);
-  callback.searchParams.set('redirect', redirectTo);
-  return callback.toString();
+export function oauthRedirectUrl(): string {
+  return new URL('/auth/callback', window.location.origin).toString();
 }
 
 export function persistPostLoginRedirect(redirectTo: string) {
@@ -28,7 +26,7 @@ export function clearPostLoginRedirect() {
 
 export async function startOAuthSignIn(provider: OAuthProvider, redirectTo: string) {
   persistPostLoginRedirect(redirectTo);
-  const redirectUri = oauthRedirectUrl(redirectTo);
+  const redirectUri = oauthRedirectUrl();
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider,

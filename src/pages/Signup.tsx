@@ -11,6 +11,7 @@ import { Loader2, Shield, Lock, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeRedirect, buildRedirectQuery } from '@/lib/safeRedirect';
 import { describeOAuthError, startOAuthSignIn } from '@/lib/oauthSignIn';
+import { useGoogleAuthAvailability } from '@/hooks/useGoogleAuthAvailability';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -19,12 +20,14 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { signUp } = useAuth();
+  const googleAuth = useGoogleAuthAvailability();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Validated: only same-origin root-relative paths are accepted; anything
   // suspicious falls back to /dashboard to prevent open-redirect attacks.
   const redirectTo = safeRedirect(searchParams.get('redirect'));
   const loginHref = `/login${buildRedirectQuery(redirectTo)}`;
+  const googleDisabled = googleLoading || loading || googleAuth.loading || googleAuth.status === 'disabled';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,11 +112,11 @@ export default function Signup() {
           <Button
             type="button"
             variant="outline"
-            className="w-full mb-4 h-11 rounded-xl"
+            className="w-full mb-2 h-11 rounded-xl"
             onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
+            disabled={googleDisabled}
           >
-            {googleLoading ? (
+            {googleLoading || googleAuth.loading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
               <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
@@ -135,8 +138,17 @@ export default function Signup() {
                 />
               </svg>
             )}
-            Continue with Google
+            {googleAuth.loading
+              ? 'Verificando Google...'
+              : googleAuth.status === 'disabled'
+                ? 'Google indisponível'
+                : 'Continue with Google'}
           </Button>
+          {googleAuth.message && (
+            <p className={`mb-4 text-xs ${googleAuth.status === 'disabled' ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {googleAuth.message}
+            </p>
+          )}
 
           <div className="relative mb-4">
             <div className="absolute inset-0 flex items-center">
