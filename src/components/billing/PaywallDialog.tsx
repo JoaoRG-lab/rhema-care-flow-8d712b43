@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { toast } from "sonner";
 import { useAICredits } from "@/hooks/useAICredits";
+import { copyText } from "@/lib/clipboard";
 
 interface PaywallDialogProps {
   open: boolean;
@@ -131,7 +132,11 @@ export function PaywallDialog({ open, onOpenChange, onSuccess }: PaywallDialogPr
 
   const handleCopy = async () => {
     if (!pix?.qrCode) return;
-    await navigator.clipboard.writeText(pix.qrCode);
+    const copied = await copyText(pix.qrCode);
+    if (!copied) {
+      toast.error("Nao foi possivel copiar o código PIX");
+      return;
+    }
     setCopied(true);
     toast.success("Código PIX copiado!");
     setTimeout(() => setCopied(false), 2000);

@@ -28,6 +28,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
+import { copyText } from "@/lib/clipboard";
 
 const STORAGE_KEY = "mirror.targets.v1";
 
@@ -127,12 +128,12 @@ export default function MirrorSettings() {
   }
 
   async function copyManifest() {
-    try {
-      await navigator.clipboard.writeText(manifest);
+    const copied = await copyText(manifest);
+    if (copied) {
       toast({ title: "Copied", description: "Paste into .github/mirror-targets.json" });
-    } catch {
-      toast({ title: "Copy failed", description: "Select and copy manually", variant: "destructive" });
+      return;
     }
+    toast({ title: "Copy failed", description: "Select and copy manually", variant: "destructive" });
   }
 
   async function runVerification() {
