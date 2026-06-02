@@ -65,11 +65,3 @@ export function SubmissionReadiness({ sections }: Props) {
     </div>
   );
 }
-
-export function isSubmissionReady(sections: ManuscriptSection[]): boolean {
-  const coreIds = ['title', 'authors', 'corresponding', 'abstract', 'keywords', 'introduction', 'methods', 'results', 'discussion', 'conclusion', 'references'];
-  return coreIds.every((id) => {
-    const s = sections.find((sec) => sec.id === id);
-    return s && s.content.trim().length > 10;
-  });
-}

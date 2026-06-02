@@ -63,7 +63,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { AIOutreachResearchPanel, EPIC_CTA_TEMPLATE } from '@/components/outreach/AIOutreachResearchPanel';
+import { AIOutreachResearchPanel } from '@/components/outreach/AIOutreachResearchPanel';
+import { EPIC_CTA_TEMPLATE } from '@/lib/outreachTemplates';
 import DOMPurify from 'dompurify';
 
 interface OutreachContact {
