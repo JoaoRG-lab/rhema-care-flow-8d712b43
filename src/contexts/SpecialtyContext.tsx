@@ -49,6 +49,7 @@ const SpecialtyContext = createContext<SpecialtyContextType | undefined>(
 // ─── Provider ────────────────────────────────────────────────────────────────
 export function SpecialtyProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id;
 
   // Initialise from localStorage so there's no flicker on load
   const [specialtyId, setSpecialtyId] = useState<string>(
@@ -58,7 +59,7 @@ export function SpecialtyProvider({ children }: { children: ReactNode }) {
 
   // ── On login: fetch the saved specialty from the user's profile ─────────────
   useEffect(() => {
-    if (!user) return; // anonymous — keep localStorage value
+    if (!userId) return; // anonymous — keep localStorage value
 
     let cancelled = false;
     setLoadingSpecialty(true);
@@ -66,7 +67,7 @@ export function SpecialtyProvider({ children }: { children: ReactNode }) {
     supabase
       .from('profiles')
       .select('specialty')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -88,7 +89,7 @@ export function SpecialtyProvider({ children }: { children: ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, [user?.id]); // re-run only when the logged-in user changes
+  }, [userId]); // re-run only when the logged-in user changes
 
   // ── setSpecialty: update state + localStorage + DB ─────────────────────────
   const setSpecialty = useCallback(
@@ -103,19 +104,19 @@ export function SpecialtyProvider({ children }: { children: ReactNode }) {
       writeLS(id);
 
       // Persist to DB only when authenticated
-      if (!user) return;
+      if (!userId) return;
 
       const { error } = await supabase
         .from('profiles')
         .update({ specialty: id, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (error) {
         console.error('[SpecialtyContext] profile update error:', error.message);
         // Non-fatal — the local state is already updated
       }
     },
-    [user],
+    [userId],
   );
 
   return (

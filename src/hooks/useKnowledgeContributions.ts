@@ -44,54 +44,13 @@ export function useKnowledgeContributions() {
   const [myContributions, setMyContributions] = useState<KnowledgeContribution[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch approved contributions (community feed)
-  const fetchApprovedContributions = useCallback(async () => {
-    setLoading(true);
-    
-    const { data, error } = await supabase
-      .from('knowledge_contributions')
-      .select('*')
-      .eq('status', 'approved')
-      .order('helpful_count', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching contributions:', error);
-      toast.error('Failed to load contributions');
-    } else if (data) {
-      // Fetch author info and user votes
-      const enrichedContributions = await enrichContributions(data);
-      setContributions(enrichedContributions);
-    }
-    
-    setLoading(false);
-  }, [user]);
-
-  // Fetch user's own contributions
-  const fetchMyContributions = useCallback(async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('knowledge_contributions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching my contributions:', error);
-    } else if (data) {
-      setMyContributions(data as KnowledgeContribution[]);
-    }
-  }, [user]);
-
   // Enrich contributions with author info and vote status
-  const enrichContributions = async (data: any[]): Promise<KnowledgeContribution[]> => {
+  const enrichContributions = useCallback(async (data: any[]): Promise<KnowledgeContribution[]> => {
     if (!data.length) return [];
 
     // Get unique user IDs
     const userIds = [...new Set(data.map(c => c.user_id))];
-    
+
     // Fetch profiles for authors
     const { data: profiles } = await supabase
       .from('profiles')
@@ -112,7 +71,7 @@ export function useKnowledgeContributions() {
         .from('contribution_votes')
         .select('contribution_id')
         .eq('user_id', user.id);
-      
+
       if (votes) {
         userVotes = Object.fromEntries(votes.map(v => [v.contribution_id, true]));
       }
@@ -128,7 +87,48 @@ export function useKnowledgeContributions() {
       author_tier: tierMap[contribution.user_id] || null,
       user_has_voted: userVotes[contribution.id] || false,
     }));
-  };
+  }, [user]);
+
+  // Fetch approved contributions (community feed)
+  const fetchApprovedContributions = useCallback(async () => {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from('knowledge_contributions')
+      .select('*')
+      .eq('status', 'approved')
+      .order('helpful_count', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Error fetching contributions:', error);
+      toast.error('Failed to load contributions');
+    } else if (data) {
+      // Fetch author info and user votes
+      const enrichedContributions = await enrichContributions(data);
+      setContributions(enrichedContributions);
+    }
+
+    setLoading(false);
+  }, [enrichContributions]);
+
+  // Fetch user's own contributions
+  const fetchMyContributions = useCallback(async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('knowledge_contributions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching my contributions:', error);
+    } else if (data) {
+      setMyContributions(data as KnowledgeContribution[]);
+    }
+  }, [user]);
 
   // Create a new contribution
   const createContribution = useCallback(async (input: CreateContributionInput): Promise<boolean> => {
@@ -187,8 +187,8 @@ export function useKnowledgeContributions() {
       }
 
       // Update local state
-      setContributions(prev => prev.map(c => 
-        c.id === contributionId 
+      setContributions(prev => prev.map(c =>
+        c.id === contributionId
           ? { ...c, helpful_count: c.helpful_count - 1, user_has_voted: false }
           : c
       ));
@@ -211,8 +211,8 @@ export function useKnowledgeContributions() {
     }
 
     // Update local state
-    setContributions(prev => prev.map(c => 
-      c.id === contributionId 
+    setContributions(prev => prev.map(c =>
+      c.id === contributionId
         ? { ...c, helpful_count: c.helpful_count + 1, user_has_voted: true }
         : c
     ));
