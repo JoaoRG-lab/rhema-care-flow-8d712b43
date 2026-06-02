@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { format, addDays, isBefore, isToday, isTomorrow } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
@@ -261,7 +261,7 @@ export default function PatientPortal() {
     if (code) setActivationCode(code);
   }, [location.search]);
 
-  const loadPortal = async () => {
+  const loadPortal = useCallback(async () => {
     if (!user) {
       setPortalData({ ok: false, error: 'auth_required' });
       setPortalLoading(false);
@@ -276,12 +276,12 @@ export default function PatientPortal() {
       setPortalData((data as unknown as PortalPayload) ?? { ok: false, error: 'empty_response' });
     }
     setPortalLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
     void loadPortal();
-  }, [authLoading, user?.id]);
+  }, [authLoading, loadPortal]);
 
   useEffect(() => {
     const patient = portalData?.patient;
