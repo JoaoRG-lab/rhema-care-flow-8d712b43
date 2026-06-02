@@ -180,7 +180,7 @@ export default function CodeConsole() {
       if (data && data.length === 0) await createThread();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, allowed]);
 
   // Load messages for active thread
   useEffect(() => {
