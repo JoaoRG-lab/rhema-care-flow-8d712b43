@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, ChevronRight } from 'lucide-react';
 import { useProblems } from '@/hooks/useProblems';
 import { getProblemsForSpecialty, findProblemByCode, PROBLEM_REGISTRY } from '@/config/problemRegistry';
-import { useSpecialty } from '@/contexts/SpecialtyContext';
+import { useSpecialty } from '@/hooks/useSpecialty';
 
 interface Props {
   patientId?: string | null;

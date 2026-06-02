@@ -16,7 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useContributionComments, ContributionComment } from '@/hooks/useContributionComments';
 import {
   AlertDialog,

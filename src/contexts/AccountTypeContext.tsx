@@ -1,21 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-
-export type AccountType = 'clinician' | 'patient';
+import { AccountTypeContext, type AccountType } from '@/contexts/accountTypeContextValue';
 
 const LS_KEY = 'uhs:account_type';
-
-interface AccountTypeContextType {
-  accountType: AccountType | null;
-  setAccountType: (type: AccountType) => Promise<void>;
-  loading: boolean;
-  isClinician: boolean;
-  isPatient: boolean;
-  isOnboarded: boolean;
-}
-
-const AccountTypeContext = createContext<AccountTypeContextType | undefined>(undefined);
 
 export function AccountTypeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -58,10 +46,4 @@ export function AccountTypeProvider({ children }: { children: ReactNode }) {
       {children}
     </AccountTypeContext.Provider>
   );
-}
-
-export function useAccountType() {
-  const ctx = useContext(AccountTypeContext);
-  if (!ctx) throw new Error('useAccountType must be used within AccountTypeProvider');
-  return ctx;
 }

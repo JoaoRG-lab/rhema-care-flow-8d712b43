@@ -9,10 +9,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SPECIALTIES } from '@/config/specialties';
-import { useSpecialty } from '@/contexts/SpecialtyContext';
+import { useSpecialty } from '@/hooks/useSpecialty';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Stethoscope, Check, RotateCcw, ChevronDown, LayoutGrid } from 'lucide-react';
 

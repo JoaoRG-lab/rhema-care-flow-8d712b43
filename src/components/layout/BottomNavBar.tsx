@@ -8,8 +8,8 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePersona } from '@/contexts/PersonaContext';
-import { useAccountType } from '@/contexts/AccountTypeContext';
+import { usePersona } from '@/hooks/usePersona';
+import { useAccountType } from '@/hooks/useAccountType';
 
 // ── Tab sets per persona ───────────────────────────────────────────────────────
 const clinicalTabs = [

@@ -1,5 +1,5 @@
  import { useState, useEffect } from 'react';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { supabase } from '@/integrations/supabase/client';
  
  export type AppRole = 'admin' | 'moderator' | 'user';

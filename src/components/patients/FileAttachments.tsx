@@ -1,7 +1,7 @@
  import { useState, useRef } from 'react';
  import { Button } from '@/components/ui/button';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { Paperclip, X, FileText, Image, File, Loader2 } from 'lucide-react';
  import { toast } from 'sonner';
  

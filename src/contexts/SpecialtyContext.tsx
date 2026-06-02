@@ -1,14 +1,13 @@
 import {
-  createContext,
-  useContext,
   useState,
   useEffect,
   useCallback,
   ReactNode,
 } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { SPECIALTIES } from '@/config/specialties';
+import { SpecialtyContext } from '@/contexts/specialtyContextValue';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LS_KEY = 'uhs:lastSpecialtyId';
@@ -31,20 +30,6 @@ function writeLS(id: string) {
     window.localStorage.setItem(LS_KEY, id);
   } catch { /* private-mode or storage full — no-op */ }
 }
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface SpecialtyContextType {
-  /** Currently active specialty id, e.g. 'pediatrics' */
-  specialtyId: string;
-  /** Switch specialty — persists to profile when logged in */
-  setSpecialty: (id: string) => Promise<void>;
-  /** Whether an initial load from the DB is still in-flight */
-  loadingSpecialty: boolean;
-}
-
-const SpecialtyContext = createContext<SpecialtyContextType | undefined>(
-  undefined,
-);
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 export function SpecialtyProvider({ children }: { children: ReactNode }) {
@@ -126,13 +111,4 @@ export function SpecialtyProvider({ children }: { children: ReactNode }) {
       {children}
     </SpecialtyContext.Provider>
   );
-}
-
-// ─── Hook ────────────────────────────────────────────────────────────────────
-export function useSpecialty() {
-  const ctx = useContext(SpecialtyContext);
-  if (!ctx) {
-    throw new Error('useSpecialty must be used within <SpecialtyProvider>');
-  }
-  return ctx;
 }

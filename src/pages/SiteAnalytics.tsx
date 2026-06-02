@@ -13,7 +13,7 @@ import {
   TrendingUp, ArrowUp, ArrowDown, RefreshCw, Activity, MousePointerClick,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { subDays, subHours, format, startOfDay, eachDayOfInterval, eachHourOfInterval } from 'date-fns';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,

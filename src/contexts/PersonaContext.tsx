@@ -1,16 +1,5 @@
- import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
- 
- export type Persona = 'clinical' | 'academic' | 'patient';
- 
- interface PersonaContextType {
-   persona: Persona;
-   setPersona: (persona: Persona) => void;
-   isPatientView: boolean;
-   isAcademicView: boolean;
-   isClinicalView: boolean;
- }
- 
- const PersonaContext = createContext<PersonaContextType | undefined>(undefined);
+ import { useState, useEffect, ReactNode } from 'react';
+ import { PersonaContext, type Persona } from '@/contexts/personaContextValue';
  
  export function PersonaProvider({ children }: { children: ReactNode }) {
    const [persona, setPersona] = useState<Persona>(() => {
@@ -35,12 +24,4 @@
        {children}
      </PersonaContext.Provider>
    );
- }
- 
- export function usePersona() {
-   const context = useContext(PersonaContext);
-   if (!context) {
-     throw new Error('usePersona must be used within PersonaProvider');
-   }
-   return context;
  }

@@ -17,7 +17,7 @@ import {
     AlertTriangle, Loader2, Download
   } from 'lucide-react';
  import { useUserRole } from '@/hooks/useUserRole';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { supabase, supabasePublishableKey, supabaseUrl } from '@/integrations/supabase/client';
  import { toast } from 'sonner';
  import { format } from 'date-fns';

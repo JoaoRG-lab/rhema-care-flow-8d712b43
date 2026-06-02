@@ -3,7 +3,7 @@
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Button } from '@/components/ui/button';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Users, Syringe, Briefcase, AlertTriangle, X } from 'lucide-react';
  import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay } from 'date-fns';
  import { cn } from '@/lib/utils';

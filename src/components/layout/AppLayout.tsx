@@ -4,7 +4,7 @@ import { MobileHeader } from './MobileHeader';
 import { MobileSidebar } from './MobileSidebar';
 import { BottomNavBar } from './BottomNavBar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useAccountType } from '@/contexts/AccountTypeContext';
+import { useAccountType } from '@/hooks/useAccountType';
 
 interface AppLayoutProps {
   children: ReactNode;

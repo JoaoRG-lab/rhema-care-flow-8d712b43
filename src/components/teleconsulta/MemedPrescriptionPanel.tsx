@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useMemedPrescription, type MemedPaciente } from '@/hooks/useMemedPrescription';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface MemedPrescriptionPanelProps {

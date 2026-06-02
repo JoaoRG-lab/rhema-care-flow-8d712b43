@@ -6,7 +6,7 @@
  import { Calculator, Save, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
  import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { toast } from 'sonner';
  import { addToHistory } from '@/lib/calculators';
  import { Alert, AlertDescription } from '@/components/ui/alert';

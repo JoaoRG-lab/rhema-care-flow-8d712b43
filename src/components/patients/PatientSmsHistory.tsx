@@ -13,7 +13,7 @@ import {
   Plus, Trash2, Calendar, Phone, RefreshCw, Bell
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useScheduledSms, ScheduledSMS } from '@/hooks/useScheduledSms';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
