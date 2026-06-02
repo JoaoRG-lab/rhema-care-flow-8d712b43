@@ -16,6 +16,24 @@ function describeNetworkError(functionName: string, error: unknown): string {
   return message || `Não foi possível chamar a Edge Function "${functionName}".`;
 }
 
+function describeHttpError(functionName: string, status: number, payloadMessage?: string): string {
+  if (payloadMessage) return payloadMessage;
+
+  if (status === 401) {
+    return `Sessão ausente ou expirada ao chamar "${functionName}". Faça login novamente e tente outra vez.`;
+  }
+
+  if (status === 403) {
+    return `Você não tem permissão para executar "${functionName}".`;
+  }
+
+  if (status === 404) {
+    return `Edge Function "${functionName}" não encontrada no Supabase. Verifique se ela foi publicada no projeto correto.`;
+  }
+
+  return `Edge Function "${functionName}" retornou status ${status}.`;
+}
+
 /**
  * Wrapper around supabase.functions.invoke that properly extracts
  * error messages from non-2xx responses instead of showing the generic
@@ -55,10 +73,11 @@ export async function invokeEdgeFn<T = unknown>(
     }
 
     if (!response.ok) {
-      const errorMsg =
-        responseData?.error ||
-        responseData?.message ||
-        `Function returned status ${response.status}`;
+      const errorMsg = describeHttpError(
+        functionName,
+        response.status,
+        responseData?.error || responseData?.message
+      );
       return { data: null, error: errorMsg, status: response.status };
     }
 

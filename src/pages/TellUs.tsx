@@ -54,18 +54,18 @@ export default function TellUs() {
       });
       if (error) throw error;
 
-      try {
-        await invokeEdgeFn("send-feedback-email", {
-          category,
-          name: name.trim(),
-          email: email.trim(),
-          message: message.trim(),
-        });
-      } catch {
-        // email delivery is best-effort
-      }
+      const { error: emailError } = await invokeEdgeFn("send-feedback-email", {
+        category,
+        name: name.trim(),
+        email: email.trim(),
+        message: message.trim(),
+      });
 
-      toast.success("Thank you! Your feedback has been sent. 💌");
+      if (emailError) {
+        toast.warning(`Feedback saved, but email delivery failed: ${emailError}`);
+      } else {
+        toast.success("Thank you! Your feedback has been sent. 💌");
+      }
       setCategory("");
       setName("");
       setEmail("");
