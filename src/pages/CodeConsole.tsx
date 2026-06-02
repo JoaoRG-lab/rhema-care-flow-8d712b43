@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { AlertTriangle, Github, Plus, Rocket, Send, Sparkles, Trash2, Bot, Code2, Search, KeyRound, TerminalSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { useUltimateAccess } from "@/hooks/useUltimateAccess";
 
 type Agent = "user" | "chatgpt" | "codex" | "perplexity" | "custom" | "sentinel";
@@ -115,30 +116,11 @@ const AGENT_META: Record<
 
 const ALLOWED_EMAIL = "joaooz123@gmail.com";
 
-type InvokeErrorLike = Error & { context?: Response };
-
-async function readFunctionError(error: unknown, data?: { error?: unknown } | null): Promise<string | null> {
-  if (data?.error) return String(data.error);
-
-  const maybe = error as InvokeErrorLike | null;
-  if (!maybe) return null;
-
-  if (maybe.context instanceof Response) {
-    try {
-      const payload = await maybe.context.clone().json();
-      if (payload?.error) return String(payload.error);
-      if (payload?.message) return String(payload.message);
-    } catch {
-      try {
-        const text = await maybe.context.clone().text();
-        if (text) return text.slice(0, 320);
-      } catch {
-        // Fall back to the generic error message below.
-      }
-    }
-  }
-
-  return maybe.message || "A Edge Function retornou erro sem detalhes.";
+function edgeInvokeError(error: string | null, data: unknown): string | null {
+  if (error) return error;
+  const payload = data as { error?: unknown } | null;
+  if (payload?.error) return String(payload.error);
+  return null;
 }
 
 export default function CodeConsole() {
@@ -247,11 +229,13 @@ export default function CodeConsole() {
     };
     setMessages((m) => [...m, optimistic]);
 
-    const { data, error } = await supabase.functions.invoke("code-console-chat", {
-      body: { threadId: activeId, prompt: text, agent },
+    const { data, error } = await invokeEdgeFn("code-console-chat", {
+      threadId: activeId,
+      prompt: text,
+      agent,
     });
     setBusy(false);
-    const invokeError = await readFunctionError(error, data);
+    const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
       toast.error(invokeError);
@@ -306,12 +290,13 @@ export default function CodeConsole() {
   async function previewFiles(messageId: string) {
     setDeployingId(messageId);
     const tid = toast.loading("Verificando arquivos…");
-    const { data, error } = await supabase.functions.invoke("code-console-deploy", {
-      body: { messageId, dryRun: true },
+    const { data, error } = await invokeEdgeFn("code-console-deploy", {
+      messageId,
+      dryRun: true,
     });
     toast.dismiss(tid);
     setDeployingId(null);
-    const invokeError = await readFunctionError(error, data);
+    const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
       toast.error(invokeError);
       return;
@@ -338,12 +323,14 @@ export default function CodeConsole() {
     const expectedShas = Object.fromEntries(files.map((file) => [file.path, file.expectedSha]));
     setDeployingId(messageId);
     const tid = toast.loading("Aplicando na branch de agente…");
-    const { data, error } = await supabase.functions.invoke("code-console-deploy", {
-      body: { messageId, expectedShas, openPullRequest: true },
+    const { data, error } = await invokeEdgeFn("code-console-deploy", {
+      messageId,
+      expectedShas,
+      openPullRequest: true,
     });
     toast.dismiss(tid);
     setDeployingId(null);
-    const invokeError = await readFunctionError(error, data);
+    const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
       toast.error(invokeError);
       return;

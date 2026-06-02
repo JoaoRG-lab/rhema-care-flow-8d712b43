@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,9 +58,9 @@ export default function AiRedundancy() {
 
   async function trigger() {
     setBusy(true);
-    const { error } = await supabase.functions.invoke("ai-improvement-cycle");
+    const { error } = await invokeEdgeFn("ai-improvement-cycle");
     setBusy(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(error);
     else { toast.success("Ciclo disparado"); await load(); }
   }
 

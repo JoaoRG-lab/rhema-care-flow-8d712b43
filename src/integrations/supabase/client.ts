@@ -44,9 +44,9 @@ if (isDeprecatedUrl(envUrl) || DEPRECATED_SUPABASE_PROJECT_IDS.has(envProjectId 
   );
 }
 
-const supabaseUrl = isCanonicalUrl(envUrl) ? envUrl : CANONICAL_SUPABASE_URL;
+export const supabaseUrl = isCanonicalUrl(envUrl) ? envUrl : CANONICAL_SUPABASE_URL;
 
-const supabasePublishableKey =
+export const supabasePublishableKey =
   envProjectId === CANONICAL_SUPABASE_PROJECT_ID && envKey ? envKey : CANONICAL_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {

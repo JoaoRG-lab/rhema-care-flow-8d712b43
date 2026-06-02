@@ -18,7 +18,7 @@ import {
   } from 'lucide-react';
  import { useUserRole } from '@/hooks/useUserRole';
  import { useAuth } from '@/contexts/AuthContext';
- import { supabase } from '@/integrations/supabase/client';
+ import { supabase, supabasePublishableKey, supabaseUrl } from '@/integrations/supabase/client';
  import { toast } from 'sonner';
  import { format } from 'date-fns';
  import { VerifiedBadge, VerificationStatusBadge, type VerificationTier } from '@/components/ui/VerifiedBadge';
@@ -84,12 +84,13 @@ import {
       if (!session) throw new Error('Not authenticated');
       
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-data-export`,
+        `${supabaseUrl}/functions/v1/audit-data-export`,
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            apikey: supabasePublishableKey,
           },
         }
       );

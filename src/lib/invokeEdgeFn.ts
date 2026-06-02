@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabasePublishableKey, supabaseUrl } from '@/integrations/supabase/client';
 
 export interface EdgeFnResult<T = unknown> {
   data: T | null;
@@ -21,7 +21,7 @@ export async function invokeEdgeFn<T = unknown>(
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      apikey: supabasePublishableKey,
     };
 
     if (accessToken) {
@@ -29,7 +29,7 @@ export async function invokeEdgeFn<T = unknown>(
     }
 
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`,
+      `${supabaseUrl}/functions/v1/${functionName}`,
       {
         method: 'POST',
         headers,

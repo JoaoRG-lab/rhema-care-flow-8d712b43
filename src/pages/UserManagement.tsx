@@ -178,9 +178,9 @@ export default function UserManagement() {
 
     setRevoking(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
+      const { data, error } = await invokeEdgeFn<{ success?: boolean }>(
         'admin-signout-all-sessions',
-        { body: { email: target } }
+        { email: target }
       );
       if (error) {
         console.error(error);

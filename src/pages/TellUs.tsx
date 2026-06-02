@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, Sparkles, PartyPopper, Mail, ArrowRight, Star, Lightbulb, Flame, Dice5, Laugh } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { toast } from "sonner";
 
 const CATEGORIES = [
@@ -54,8 +55,11 @@ export default function TellUs() {
       if (error) throw error;
 
       try {
-        await supabase.functions.invoke("send-feedback-email", {
-          body: { category, name: name.trim(), email: email.trim(), message: message.trim() },
+        await invokeEdgeFn("send-feedback-email", {
+          category,
+          name: name.trim(),
+          email: email.trim(),
+          message: message.trim(),
         });
       } catch {
         // email delivery is best-effort

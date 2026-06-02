@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
 
 /**
  * Integração oficial Memed — Sinapse Prescrição (módulo público).
@@ -152,17 +153,19 @@ export function useMemedPrescription(): MemedHookReturn {
         let scriptUrl = MEMED_SCRIPT_DEFAULT;
 
         if (accessToken) {
-          const res = await supabase.functions.invoke('memed-token', {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          const res = await invokeEdgeFn<{
+            token?: string;
+            scriptUrl?: string;
+            reason?: string;
+          }>('memed-token');
           if (!res.error && res.data) {
-            if (res.data.token) token = res.data.token as string;
-            if (res.data.scriptUrl) scriptUrl = res.data.scriptUrl as string;
+            if (res.data.token) token = res.data.token;
+            if (res.data.scriptUrl) scriptUrl = res.data.scriptUrl;
             if (!token && res.data.reason) {
               console.info('[Memed] Token automático indisponível:', res.data.reason);
             }
           } else if (res.error) {
-            console.warn('[Memed] memed-token falhou:', res.error.message ?? res.error);
+            console.warn('[Memed] memed-token falhou:', res.error);
           }
         }
 

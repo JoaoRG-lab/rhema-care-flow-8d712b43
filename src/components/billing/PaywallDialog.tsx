@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Copy, Check, QrCode, Zap, Clock, CheckCircle2, XCircle, Wallet, Gift, Receipt, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { toast } from "sonner";
 import { useAICredits } from "@/hooks/useAICredits";
 
@@ -113,10 +114,11 @@ export function PaywallDialog({ open, onOpenChange, onSuccess }: PaywallDialogPr
     setSelectedPkg(packageId);
     setCreating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-mercadopago-pix", {
-        body: { packageId },
-      });
-      if (error) throw error;
+      const { data, error } = await invokeEdgeFn<PixData & { error?: string }>(
+        "create-mercadopago-pix",
+        { packageId }
+      );
+      if (error) throw new Error(error);
       if (data?.error) throw new Error(data.error);
       setPix(data as PixData);
     } catch (err) {

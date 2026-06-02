@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabasePublishableKey, supabaseUrl } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface Message {
@@ -10,7 +10,7 @@ export interface Message {
   timestamp: Date;
 }
 
-const AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-config-assistant`;
+const AI_URL = `${supabaseUrl}/functions/v1/ai-config-assistant`;
 
 export function useAIAssistant() {
   const { user } = useAuth();
@@ -78,7 +78,7 @@ export function useAIAssistant() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: supabasePublishableKey,
           'x-idempotency-key': userMessage.id,
         },
         body: JSON.stringify({ messages: conversationHistory }),

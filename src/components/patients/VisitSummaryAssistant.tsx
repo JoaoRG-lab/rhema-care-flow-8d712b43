@@ -5,7 +5,7 @@
  import { FileText, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
  import ReactMarkdown from 'react-markdown';
  import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabasePublishableKey, supabaseUrl } from '@/integrations/supabase/client';
  import type { Visit } from '@/types/clinical';
  
  interface VisitSummaryAssistantProps {
@@ -31,11 +31,12 @@ import { supabase } from '@/integrations/supabase/client';
         throw new Error('You must be logged in to use AI summarization');
       }
 
-       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/summarize-visits`, {
+       const response = await fetch(`${supabaseUrl}/functions/v1/summarize-visits`, {
          method: 'POST',
          headers: {
            'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
+          apikey: supabasePublishableKey,
          },
          body: JSON.stringify({
            visits: visits.map(v => ({

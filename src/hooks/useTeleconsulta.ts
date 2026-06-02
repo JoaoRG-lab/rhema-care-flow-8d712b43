@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -34,9 +35,10 @@ export type UpdateTeleconsultaInput = Partial<Omit<Teleconsulta, 'id' | 'provide
 
 async function createDailyRoom(roomName: string): Promise<{ url: string; name: string } | null> {
   try {
-    const { data, error } = await supabase.functions.invoke('create-daily-room', {
-      body: { roomName },
-    });
+    const { data, error } = await invokeEdgeFn<{ url?: string; name?: string }>(
+      'create-daily-room',
+      { roomName }
+    );
     if (error || !data?.url) return null;
     return data as { url: string; name: string };
   } catch (err) {

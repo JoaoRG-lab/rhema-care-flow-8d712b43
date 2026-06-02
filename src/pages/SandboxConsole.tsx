@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Send, FileText, Trash2, List, Eye, Lock, Unlock } from "lucide-react";
+import { supabasePublishableKey, supabaseUrl } from "@/integrations/supabase/client";
 
 type Op = "read" | "write" | "list" | "delete";
 
@@ -19,7 +20,7 @@ interface Entry {
   detail: string;
 }
 
-const BRIDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-bridge`;
+const BRIDGE_URL = `${supabaseUrl}/functions/v1/agent-bridge`;
 const TOKEN_KEY = "agent_bridge_token";
 
 export default function SandboxConsole() {
@@ -75,7 +76,7 @@ export default function SandboxConsole() {
     try {
       const res = await fetch(BRIDGE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Agent-Token": token },
+        headers: { "Content-Type": "application/json", apikey: supabasePublishableKey, "X-Agent-Token": token },
         body: JSON.stringify(body),
       });
       const json = await res.json();
