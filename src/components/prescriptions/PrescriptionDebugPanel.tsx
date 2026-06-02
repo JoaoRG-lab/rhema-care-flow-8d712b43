@@ -18,6 +18,7 @@ import { Bug, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Prescription } from '@/hooks/usePrescriptions';
 import { rxLog } from '@/lib/prescriptionLogger';
 import { toast } from 'sonner';
+import { copyText } from '@/lib/clipboard';
 
 interface PrescriptionDebugPanelProps {
   rx: Prescription;
@@ -70,12 +71,12 @@ export function PrescriptionDebugPanel({ rx, source, context }: PrescriptionDebu
   );
 
   const handleCopyJson = async () => {
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(rx, null, 2));
+    const copied = await copyText(JSON.stringify(rx, null, 2));
+    if (copied) {
       toast.success('JSON da prescrição copiado');
-    } catch {
-      toast.error('Falha ao copiar JSON');
+      return;
     }
+    toast.error('Falha ao copiar JSON');
   };
 
   return (

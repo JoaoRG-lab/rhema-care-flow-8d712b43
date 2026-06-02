@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { buildPatientTimelineAnchor, PATIENT_TIMELINE_VARIABLES, hashPatientCode } from "@/lib/patientChainAnchor";
 import { getExplorerUrl, formatSignature } from "@/lib/solana";
 import { buildDrilldownReport, buildFieldHints } from "@/lib/chainDrilldown";
+import { copyText } from "@/lib/clipboard";
 
 interface AnchorRow {
   id: string;
@@ -190,12 +191,12 @@ export function PatientChainAnchorPanel({ patientCardId, patientCode }: Props) {
   };
 
   const copyHash = async (label: string, value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
+    const copied = await copyText(value);
+    if (copied) {
       toast.success(`${label} copied`);
-    } catch {
-      toast.error("Copy failed");
+      return;
     }
+    toast.error("Copy failed");
   };
 
   const countDiffs = verifyResult
