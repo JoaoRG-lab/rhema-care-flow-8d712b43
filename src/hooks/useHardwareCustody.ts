@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
+import { describeEdgeFunctionRuntimeError } from '@/lib/edgeFunctionDiagnostics';
 import { toast } from 'sonner';
 import { PublicKey } from '@solana/web3.js';
 
@@ -31,6 +32,16 @@ export interface HardwareError {
 function parseHardwareError(err: any): HardwareError {
   const message = err?.message || 'Unknown error';
   const errorCode = message.match(/0x[a-fA-F0-9]+/)?.[0] || null;
+  const runtimeMessage = describeEdgeFunctionRuntimeError('hardware-custody-auth', message, message);
+
+  if (runtimeMessage !== message) {
+    return {
+      type: 'network',
+      code: null,
+      message: runtimeMessage,
+      recoverable: true,
+    };
+  }
   
   const isBlindSignError = message.includes('0x6a81') || message.includes('UNKNOWN_ERROR');
   const isRejected = message.toLowerCase().includes('rejected') || message.toLowerCase().includes('cancelled');
@@ -100,6 +111,7 @@ export function useHardwareCustody() {
 
       if (error) {
         console.warn('Custody status error:', error);
+        setError(parseHardwareError(new Error(error)));
         return;
       }
 
@@ -116,6 +128,7 @@ export function useHardwareCustody() {
       }
     } catch (err: any) {
       console.error('Failed to fetch custody status:', err);
+      setError(parseHardwareError(err));
     } finally {
       setIsLoading(false);
     }

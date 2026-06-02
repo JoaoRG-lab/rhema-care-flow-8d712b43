@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
+import { getEdgeFunctionDeploymentHint } from '@/lib/edgeFunctionDiagnostics';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +45,7 @@ export function IgnitionPanel() {
   const [results, setResults] = useState<IgnitionResult[]>([]);
   const [stats, setStats] = useState<IgnitionStats | null>(null);
   const [progress, setProgress] = useState(0);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -74,6 +76,7 @@ export function IgnitionPanel() {
 
   const handleSeedTopics = async () => {
     setIsSeeding(true);
+    setRuntimeError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-ignition', { action: 'seed_topics' });
 
@@ -83,7 +86,9 @@ export function IgnitionPanel() {
       fetchStats();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to seed topics');
+      const message = err instanceof Error ? err.message : 'Failed to seed topics';
+      setRuntimeError(message);
+      toast.error(message);
     } finally {
       setIsSeeding(false);
     }
@@ -92,6 +97,7 @@ export function IgnitionPanel() {
   const handleIgnite = async () => {
     setIsIgniting(true);
     setResults([]);
+    setRuntimeError(null);
     setProgress(10);
 
     try {
@@ -112,7 +118,9 @@ export function IgnitionPanel() {
       toast.success(`🚀 Ignition complete! ${autoPublished} articles auto-published.`);
     } catch (err) {
       console.error(err);
-      toast.error('Ignition failed');
+      const message = err instanceof Error ? err.message : 'Ignition failed';
+      setRuntimeError(message);
+      toast.error(message);
     } finally {
       setIsIgniting(false);
       setTimeout(() => setProgress(0), 2000);
@@ -155,6 +163,19 @@ export function IgnitionPanel() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {runtimeError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Motor de conhecimento indisponível</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <span className="block">{runtimeError}</span>
+                {getEdgeFunctionDeploymentHint('ai-ignition', runtimeError) && (
+                  <span className="block">{getEdgeFunctionDeploymentHint('ai-ignition', runtimeError)}</span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-4 rounded-xl bg-background/50 border">

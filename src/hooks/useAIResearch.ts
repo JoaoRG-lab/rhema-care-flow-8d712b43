@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
+import { describeEdgeFunctionRuntimeError } from '@/lib/edgeFunctionDiagnostics';
 import { toast } from 'sonner';
 
 interface ResearchResult {
@@ -76,7 +77,11 @@ export function useAIResearch() {
 
       return data.data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to call AI research engine';
+      const message = describeEdgeFunctionRuntimeError(
+        'ai-research-engine',
+        err instanceof Error ? err.message : '',
+        'Failed to call AI research engine'
+      );
       setError(message);
       toast.error(message);
       throw err;
