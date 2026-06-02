@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +32,7 @@ export default function PatientTherapeuticSafetyPage() {
   const [flagsText, setFlagsText] = useState('');
   const [notes, setNotes] = useState('');
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!user || !patientId) return;
     setLoading(true);
     const { data } = await supabase
@@ -43,9 +43,9 @@ export default function PatientTherapeuticSafetyPage() {
       .order('created_at', { ascending: false });
     setItems((data ?? []) as unknown as SafetyChecklist[]);
     setLoading(false);
-  };
+  }, [patientId, user]);
 
-  useEffect(() => { void refresh(); }, [user, patientId]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const submit = async () => {
     if (!user || !patientId || !therapy.trim()) return;
