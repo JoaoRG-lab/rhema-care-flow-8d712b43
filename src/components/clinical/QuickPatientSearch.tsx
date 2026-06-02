@@ -5,7 +5,7 @@
  import { Card, CardContent } from '@/components/ui/card';
  import { DiagnosisTag } from '@/components/ui/DiagnosisTag';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { cn } from '@/lib/utils';
  import type { PatientCard } from '@/types/clinical';
  

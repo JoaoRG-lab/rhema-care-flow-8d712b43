@@ -7,7 +7,7 @@
  import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { useLastScores, LastScoreData } from '@/hooks/useLastScores';
  import { Zap, RotateCcw, Save, Clock, ChevronRight } from 'lucide-react';
  import { toast } from 'sonner';

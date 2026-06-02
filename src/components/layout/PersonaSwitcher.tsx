@@ -1,4 +1,5 @@
- import { usePersona, Persona } from '@/contexts/PersonaContext';
+ import { usePersona } from '@/hooks/usePersona';
+ import type { Persona } from '@/contexts/personaContextValue';
  import { Button } from '@/components/ui/button';
  import {
    DropdownMenu,

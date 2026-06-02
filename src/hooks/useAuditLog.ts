@@ -1,6 +1,6 @@
  import { useCallback } from 'react';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
 import type { Json } from '@/integrations/supabase/types';
  
  type AuditAction = 'view' | 'create' | 'update' | 'delete' | 'export' | 'download';

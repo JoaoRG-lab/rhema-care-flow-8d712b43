@@ -6,7 +6,7 @@
  import { Badge } from '@/components/ui/badge';
  import { Calculator, Save, TrendingDown, TrendingUp, CheckCircle, XCircle, Info } from 'lucide-react';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { toast } from 'sonner';
  import { useLoginPrompt } from '@/hooks/useLoginPrompt';
  import { LoginPromptDialog } from './LoginPromptDialog';

@@ -16,7 +16,7 @@
  import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
  import { supabase } from "@/integrations/supabase/client";
- import { useAuth } from "@/contexts/AuthContext";
+ import { useAuth } from '@/hooks/useAuth';
  import { toast } from "sonner";
  import { 
    GraduationCap, 

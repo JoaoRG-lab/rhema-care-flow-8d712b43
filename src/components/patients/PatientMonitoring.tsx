@@ -7,7 +7,7 @@
  import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
  import { Badge } from '@/components/ui/badge';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { Shield, Plus, Check, Clock, AlertTriangle, CalendarCheck2 } from 'lucide-react';
  import { format, isBefore } from 'date-fns';
  import { toast } from 'sonner';

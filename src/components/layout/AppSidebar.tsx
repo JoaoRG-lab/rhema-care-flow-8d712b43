@@ -32,11 +32,11 @@ import { LayoutDashboard,
   NotebookPen,
   GitBranch,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useVerificationStatus } from '@/hooks/useVerificationStatus';
-import { usePersona } from '@/contexts/PersonaContext';
-import { useAccountType } from '@/contexts/AccountTypeContext';
+import { usePersona } from '@/hooks/usePersona';
+import { useAccountType } from '@/hooks/useAccountType';
 import { cn } from '@/lib/utils';
 import { VerifiedBadge } from '@/components/ui/VerifiedBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

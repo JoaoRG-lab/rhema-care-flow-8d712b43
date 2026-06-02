@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DiagnosisTag } from '@/components/ui/DiagnosisTag';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Activity,
   ArrowLeft,

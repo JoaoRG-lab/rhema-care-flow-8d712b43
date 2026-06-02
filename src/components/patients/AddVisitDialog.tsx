@@ -6,7 +6,7 @@
  import { FileAttachments } from './FileAttachments';
  import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
 import { Plus, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
  import { toast } from 'sonner';

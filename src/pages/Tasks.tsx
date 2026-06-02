@@ -8,7 +8,7 @@
  import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
  import { Checkbox } from '@/components/ui/checkbox';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { CheckSquare, Plus, Trash2 } from 'lucide-react';
  import { format } from 'date-fns';
  import { toast } from 'sonner';

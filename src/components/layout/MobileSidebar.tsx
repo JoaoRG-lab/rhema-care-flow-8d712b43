@@ -31,10 +31,10 @@ import {
   Video,
   ClipboardList,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useVerificationStatus } from '@/hooks/useVerificationStatus';
-import { usePersona } from '@/contexts/PersonaContext';
+import { usePersona } from '@/hooks/usePersona';
 import { cn } from '@/lib/utils';
 import { VerifiedBadge } from '@/components/ui/VerifiedBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -42,7 +42,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PersonaSwitcher } from './PersonaSwitcher';
-import { useAccountType } from '@/contexts/AccountTypeContext';
+import { useAccountType } from '@/hooks/useAccountType';
 import { SpecialtyQuickSwitcher } from './SpecialtyQuickSwitcher';
 import { TrustBadge } from '@/components/brand/TrustBadges';
 import { UHSLogoMark } from '@/components/brand/UHSLogo';

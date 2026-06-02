@@ -2,8 +2,8 @@ import { Menu, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UHSLogoMark } from '@/components/brand/UHSLogo';
 import { SpecialtyQuickSwitcher } from './SpecialtyQuickSwitcher';
-import { usePersona } from '@/contexts/PersonaContext';
-import { useAccountType } from '@/contexts/AccountTypeContext';
+import { usePersona } from '@/hooks/usePersona';
+import { useAccountType } from '@/hooks/useAccountType';
 import { Link } from 'react-router-dom';
 
 interface MobileHeaderProps {

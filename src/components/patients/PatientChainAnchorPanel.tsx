@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from '@/hooks/useAuth';
 import { buildPatientTimelineAnchor, PATIENT_TIMELINE_VARIABLES, hashPatientCode } from "@/lib/patientChainAnchor";
 import { getExplorerUrl, formatSignature } from "@/lib/solana";
 import { buildDrilldownReport, buildFieldHints } from "@/lib/chainDrilldown";

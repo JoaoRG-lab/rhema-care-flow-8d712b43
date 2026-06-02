@@ -1,4 +1,4 @@
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { useVerificationStatus } from '@/hooks/useVerificationStatus';
  import { VerifiedBadge, VerifiedIcon } from '@/components/ui/VerifiedBadge';
  import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

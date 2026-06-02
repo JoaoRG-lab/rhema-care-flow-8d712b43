@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { UHSLogo } from '@/components/brand/UHSLogo';
-import { useAccountType, type AccountType } from '@/contexts/AccountTypeContext';
+import { useAccountType } from '@/hooks/useAccountType';
+import type { AccountType } from '@/contexts/accountTypeContextValue';
 import { Stethoscope, HeartPulse, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

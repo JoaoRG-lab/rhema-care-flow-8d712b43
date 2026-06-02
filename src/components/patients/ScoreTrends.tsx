@@ -1,7 +1,7 @@
  import { useCallback, useEffect, useState, type ReactNode } from 'react';
  import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { format } from 'date-fns';
  import { Activity, BarChart3, CalendarClock, TrendingUp } from 'lucide-react';
  import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';

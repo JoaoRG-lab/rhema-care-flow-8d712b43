@@ -4,7 +4,7 @@
  import { Button } from '@/components/ui/button';
  import { Timer, Play, Pause, RotateCcw } from 'lucide-react';
  import { supabase } from '@/integrations/supabase/client';
- import { useAuth } from '@/contexts/AuthContext';
+ import { useAuth } from '@/hooks/useAuth';
  import { toast } from 'sonner';
  
  export default function Focus() {
