@@ -17,6 +17,7 @@ import {
   Sparkles,
   Copy,
   Download,
+  AlertTriangle,
 } from 'lucide-react';
 import { invokeEdgeFn } from '@/lib/invokeEdgeFn';
 import { toast } from 'sonner';
@@ -74,17 +75,26 @@ export function AIGuardianPanel() {
   const [confirmationRequest, setConfirmationRequest] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('standards');
+  const [agentError, setAgentError] = useState<string | null>(null);
+
+  const reportAgentError = (err: unknown, fallback: string) => {
+    const message = err instanceof Error ? err.message : fallback;
+    setAgentError(message);
+    toast.error(message);
+    return message;
+  };
 
   const fetchStandards = async () => {
     setIsLoading(true);
+    setAgentError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-guardian-agent', { action: 'get_standards' });
 
       if (error) throw new Error(error);
       setStandards(data.standards);
       toast.success('Standards retrieved successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch standards');
+    } catch (err) {
+      reportAgentError(err, 'Failed to fetch standards');
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +107,7 @@ export function AIGuardianPanel() {
     }
 
     setIsLoading(true);
+    setAgentError(null);
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-guardian-agent', {
         action: 'generate_confirmation',
@@ -108,8 +119,8 @@ export function AIGuardianPanel() {
       setConfirmations(prev => [data, ...prev]);
       setConfirmationRequest('');
       toast.success(`Confirmation ${data.confirmation_id} generated`);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to generate confirmation');
+    } catch (err) {
+      reportAgentError(err, 'Failed to generate confirmation');
     } finally {
       setIsLoading(false);
     }
@@ -122,15 +133,16 @@ export function AIGuardianPanel() {
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInputMessage('');
     setIsLoading(true);
+    setAgentError(null);
 
     try {
       const { data, error } = await invokeEdgeFn<any>('ai-guardian-agent', { action: 'chat', message: userMessage });
 
       if (error) throw new Error(error);
       setChatMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to send message');
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Error: Could not process request.' }]);
+    } catch (err) {
+      const message = reportAgentError(err, 'Failed to send message');
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${message}` }]);
     } finally {
       setIsLoading(false);
     }
@@ -161,6 +173,21 @@ export function AIGuardianPanel() {
           </p>
         </div>
       </div>
+
+      {agentError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>AI Guardian indisponivel</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <span className="block">{agentError}</span>
+            {/nao encontrada|não encontrada|not found|404/i.test(agentError) && (
+              <span className="block">
+                A funcao existe em supabase/functions/ai-guardian-agent, mas ainda precisa estar ativa no Supabase canonico.
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-3 w-full max-w-md">

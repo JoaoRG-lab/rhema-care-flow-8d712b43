@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Bot, CheckCircle2, Clock, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 
@@ -44,6 +45,7 @@ export default function AiRedundancy() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [busy, setBusy] = useState(false);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   async function load() {
     const [{ data: r }, { data: t }] = await Promise.all([
@@ -58,9 +60,13 @@ export default function AiRedundancy() {
 
   async function trigger() {
     setBusy(true);
+    setRuntimeError(null);
     const { error } = await invokeEdgeFn("ai-improvement-cycle");
     setBusy(false);
-    if (error) toast.error(error);
+    if (error) {
+      setRuntimeError(error);
+      toast.error(error);
+    }
     else { toast.success("Ciclo disparado"); await load(); }
   }
 
@@ -95,6 +101,21 @@ export default function AiRedundancy() {
             Rodar agora
           </Button>
         </div>
+
+        {runtimeError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Motor de IA indisponivel</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <span className="block">{runtimeError}</span>
+              {/nao encontrada|não encontrada|not found|404/i.test(runtimeError) && (
+                <span className="block">
+                  A funcao existe em supabase/functions/ai-improvement-cycle, mas ainda precisa estar ativa no Supabase canonico.
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {agents.map((a) => {
