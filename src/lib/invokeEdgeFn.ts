@@ -6,6 +6,16 @@ export interface EdgeFnResult<T = unknown> {
   status?: number;
 }
 
+function describeNetworkError(functionName: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? 'Network error');
+
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return `Não foi possível alcançar a Edge Function "${functionName}". Verifique se ela está publicada no Supabase, se CORS está liberado e se as variáveis VITE_SUPABASE_* apontam para o projeto correto.`;
+  }
+
+  return message || `Não foi possível chamar a Edge Function "${functionName}".`;
+}
+
 /**
  * Wrapper around supabase.functions.invoke that properly extracts
  * error messages from non-2xx responses instead of showing the generic
@@ -54,7 +64,6 @@ export async function invokeEdgeFn<T = unknown>(
 
     return { data: responseData as T, error: null, status: response.status };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Network error';
-    return { data: null, error: message };
+    return { data: null, error: describeNetworkError(functionName, err) };
   }
 }
