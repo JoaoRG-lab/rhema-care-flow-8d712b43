@@ -39,10 +39,16 @@ async function createDailyRoom(roomName: string): Promise<{ url: string; name: s
       'create-daily-room',
       { roomName }
     );
-    if (error || !data?.url) return null;
+    if (error || !data?.url) {
+      const message = error || 'Daily room URL missing';
+      console.error('Daily.co room creation failed:', message);
+      toast.warning(`Teleconsulta criada sem sala de vídeo: ${message}`);
+      return null;
+    }
     return data as { url: string; name: string };
   } catch (err) {
     console.error('Daily.co room creation failed:', err);
+    toast.warning('Teleconsulta criada sem sala de vídeo. Verifique a função create-daily-room.');
     return null;
   }
 }
