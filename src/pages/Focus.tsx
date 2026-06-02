@@ -1,4 +1,4 @@
- import { useState, useEffect, useRef } from 'react';
+ import { useState, useEffect, useRef, useCallback } from 'react';
  import { AppLayout } from '@/components/layout/AppLayout';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/hooks/useAuth';
  import { toast } from 'sonner';
- 
+
  export default function Focus() {
    const { user } = useAuth();
    const [minutes, setMinutes] = useState(25);
@@ -14,7 +14,15 @@
    const [isActive, setIsActive] = useState(false);
    const [totalMinutes, setTotalMinutes] = useState(25);
    const intervalRef = useRef<NodeJS.Timeout | null>(null);
- 
+
+   const saveSession = useCallback(async () => {
+     if (!user) return;
+     await supabase.from('focus_sessions').insert({
+       user_id: user.id,
+       duration_minutes: totalMinutes,
+     });
+   }, [totalMinutes, user]);
+
    useEffect(() => {
      if (isActive) {
        intervalRef.current = setInterval(() => {
@@ -33,29 +41,21 @@
        }, 1000);
      }
      return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-   }, [isActive, minutes, seconds]);
- 
-   const saveSession = async () => {
-     if (!user) return;
-     await supabase.from('focus_sessions').insert({
-       user_id: user.id,
-       duration_minutes: totalMinutes,
-     });
-   };
- 
+   }, [isActive, minutes, saveSession, seconds]);
+
    const reset = () => {
      setIsActive(false);
      setMinutes(totalMinutes);
      setSeconds(0);
    };
- 
+
    const setDuration = (mins: number) => {
      setTotalMinutes(mins);
      setMinutes(mins);
      setSeconds(0);
      setIsActive(false);
    };
- 
+
    return (
      <AppLayout>
        <div className="p-6 lg:p-8 flex items-center justify-center min-h-[80vh]">

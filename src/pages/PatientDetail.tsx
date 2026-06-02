@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -47,7 +47,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { PatientCard } from '@/types/clinical';
- 
+
  export default function PatientDetail() {
    const { id } = useParams<{ id: string }>();
    const navigate = useNavigate();
@@ -65,8 +65,29 @@ import type { PatientCard } from '@/types/clinical';
      next: null,
    });
    const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
- 
-   const fetchPatient = async () => {
+
+   const fetchAdjacentPatients = useCallback(async (currentCode: string) => {
+     if (!user) return;
+
+     // Get all patients sorted by code to determine prev/next
+     const { data: allPatients } = await supabase
+       .from('patient_cards_secure')
+       .select('id, patient_code')
+       .eq('user_id', user.id)
+       .order('patient_code', { ascending: true });
+
+     if (!allPatients || allPatients.length <= 1) return;
+
+     const currentIndex = allPatients.findIndex((p) => p.patient_code === currentCode);
+     if (currentIndex === -1) return;
+
+     setAdjacentPatients({
+       prev: currentIndex > 0 ? allPatients[currentIndex - 1].id : null,
+       next: currentIndex < allPatients.length - 1 ? allPatients[currentIndex + 1].id : null,
+     });
+   }, [user]);
+
+   const fetchPatient = useCallback(async () => {
      if (!user || !id) return;
      const { data, error } = await supabase
         .from('patient_cards_secure')
@@ -74,7 +95,7 @@ import type { PatientCard } from '@/types/clinical';
        .eq('id', id)
        .eq('user_id', user.id)
        .maybeSingle();
- 
+
      if (error) {
        toast.error('Failed to load patient');
        navigate('/patients');
@@ -90,34 +111,13 @@ import type { PatientCard } from '@/types/clinical';
         resourceId: data.id,
         metadata: { patient_code: data.patient_code }
       });
-      
+
        // Fetch adjacent patients for navigation
        fetchAdjacentPatients(data.patient_code);
      }
      setLoading(false);
-   };
- 
-   const fetchAdjacentPatients = async (currentCode: string) => {
-     if (!user) return;
-     
-     // Get all patients sorted by code to determine prev/next
-     const { data: allPatients } = await supabase
-       .from('patient_cards_secure')
-       .select('id, patient_code')
-       .eq('user_id', user.id)
-       .order('patient_code', { ascending: true });
-     
-     if (!allPatients || allPatients.length <= 1) return;
-     
-     const currentIndex = allPatients.findIndex((p) => p.patient_code === currentCode);
-     if (currentIndex === -1) return;
-     
-     setAdjacentPatients({
-       prev: currentIndex > 0 ? allPatients[currentIndex - 1].id : null,
-       next: currentIndex < allPatients.length - 1 ? allPatients[currentIndex + 1].id : null,
-     });
-   };
- 
+   }, [fetchAdjacentPatients, id, logAccess, navigate, user]);
+
    const navigateToPrev = () => {
      if (adjacentPatients.prev) {
        setSwipeHint('right');
@@ -127,7 +127,7 @@ import type { PatientCard } from '@/types/clinical';
        }, 150);
      }
    };
- 
+
    const navigateToNext = () => {
      if (adjacentPatients.next) {
        setSwipeHint('left');
@@ -137,32 +137,32 @@ import type { PatientCard } from '@/types/clinical';
        }, 150);
      }
    };
- 
+
    const swipeRef = useSwipeGesture<HTMLDivElement>({
      onSwipeLeft: navigateToNext,
      onSwipeRight: navigateToPrev,
      threshold: 75,
      enabled: isMobile,
    });
- 
+
    useEffect(() => {
      fetchPatient();
-   }, [user, id]);
- 
+   }, [fetchPatient]);
+
    const handleVisitAdded = () => {
      setRefreshKey(prev => prev + 1);
      setIsAddVisitOpen(false);
      fetchPatient(); // Refresh patient data to update last_visit_date
    };
-   
+
    const handlePatientUpdated = () => {
      fetchPatient();
    };
- 
+
    const handlePatientDeleted = () => {
      navigate('/patients');
    };
- 
+
    if (loading) {
      return (
        <AppLayout>
@@ -197,19 +197,19 @@ function ClinicalSignal({ icon, label, value, tone }: {
     </div>
   );
 }
- 
+
    if (!patient) return null;
 
    const diagnosisCount = patient.diagnosis_tags?.length ?? 0;
    const therapyCount = patient.therapy_tags?.length ?? 0;
    const riskCount = patient.risk_flags?.length ?? 0;
- 
+
    return (
      <AppLayout>
        <div
          ref={swipeRef}
          className={`p-4 md:p-6 lg:p-8 transition-transform duration-150 ${
-           swipeHint === 'left' ? '-translate-x-4 opacity-80' : 
+           swipeHint === 'left' ? '-translate-x-4 opacity-80' :
            swipeHint === 'right' ? 'translate-x-4 opacity-80' : ''
          }`}
        >
@@ -221,7 +221,7 @@ function ClinicalSignal({ icon, label, value, tone }: {
                <span className="hidden sm:inline">Back to Patients</span>
                <span className="sm:hidden">Back</span>
              </Button>
-             
+
              {/* Patient Navigation (visible on mobile) */}
              {isMobile && (adjacentPatients.prev || adjacentPatients.next) && (
                <div className="flex items-center gap-1">
@@ -289,16 +289,16 @@ function ClinicalSignal({ icon, label, value, tone }: {
                   <Trash2 className="h-4 w-4 mr-2" />
                   Excluir
                 </Button>
-                <AddVisitDialog 
-                  patientId={patient.id} 
-                  open={isAddVisitOpen} 
+                <AddVisitDialog
+                  patientId={patient.id}
+                  open={isAddVisitOpen}
                   onOpenChange={setIsAddVisitOpen}
                   onVisitAdded={handleVisitAdded}
                 />
               </div>
            </div>
          </div>
- 
+
          <div className="grid gap-3 sm:grid-cols-3 mb-6">
            <ClinicalSignal
              icon={<Activity className="h-4 w-4" />}
@@ -331,7 +331,7 @@ function ClinicalSignal({ icon, label, value, tone }: {
                  <div>
                    <p className="text-sm text-muted-foreground">Last Visit</p>
                    <p className="font-medium">
-                     {patient.last_visit_date 
+                     {patient.last_visit_date
                        ? format(new Date(patient.last_visit_date), 'MMM d, yyyy')
                        : 'No visits yet'}
                    </p>
@@ -348,7 +348,7 @@ function ClinicalSignal({ icon, label, value, tone }: {
                  <div>
                    <p className="text-sm text-muted-foreground">Next Follow-up</p>
                    <p className="font-medium">
-                     {patient.next_followup_date 
+                     {patient.next_followup_date
                        ? format(new Date(patient.next_followup_date), 'MMM d, yyyy')
                        : 'Not scheduled'}
                    </p>
@@ -372,7 +372,7 @@ function ClinicalSignal({ icon, label, value, tone }: {
              </CardContent>
            </Card>
          </div>
- 
+
          {/* Notes */}
          {patient.notes && (
            <Card className="mb-6">
@@ -384,7 +384,7 @@ function ClinicalSignal({ icon, label, value, tone }: {
              </CardContent>
            </Card>
          )}
- 
+
          {/* POMR quick shortcuts */}
          <div className="flex flex-wrap gap-2">
            <Button asChild size="sm" variant="outline">
@@ -437,40 +437,40 @@ function ClinicalSignal({ icon, label, value, tone }: {
                <span className="hidden sm:inline">Prescrições</span>
              </TabsTrigger>
            </TabsList>
- 
+
            <TabsContent value="visits">
-            <VisitHistory 
-              patientId={patient.id} 
-              refreshKey={refreshKey} 
+            <VisitHistory
+              patientId={patient.id}
+              refreshKey={refreshKey}
               patientCode={patient.patient_code}
               diagnosisTags={patient.diagnosis_tags}
             />
            </TabsContent>
- 
+
            <TabsContent value="scores">
-             <ScoreTrends 
-               patientId={patient.id} 
-               refreshKey={refreshKey} 
+             <ScoreTrends
+               patientId={patient.id}
+               refreshKey={refreshKey}
                patientCode={patient.patient_code}
                diagnosisTags={patient.diagnosis_tags}
              />
            </TabsContent>
- 
+
            <TabsContent value="monitoring">
              <PatientMonitoring patientId={patient.id} refreshKey={refreshKey} />
            </TabsContent>
- 
+
             <TabsContent value="timeline">
-              <TreatmentResponseTimeline 
-                patientId={patient.id} 
+              <TreatmentResponseTimeline
+                patientId={patient.id}
                 refreshKey={refreshKey}
                 patientCode={patient.patient_code}
               />
             </TabsContent>
 
              <TabsContent value="sms">
-               <PatientSmsHistory 
-                 patientId={patient.id} 
+               <PatientSmsHistory
+                 patientId={patient.id}
                  patientCode={patient.patient_code}
                  refreshKey={refreshKey}
                />
@@ -501,14 +501,14 @@ function ClinicalSignal({ icon, label, value, tone }: {
                />
              </TabsContent>
            </Tabs>
-           
-           <EditPatientDialog 
-             patient={patient} 
-             open={isEditOpen} 
+
+           <EditPatientDialog
+             patient={patient}
+             open={isEditOpen}
              onOpenChange={setIsEditOpen}
              onPatientUpdated={handlePatientUpdated}
            />
-           
+
            <DeletePatientDialog
              patientId={patient.id}
              patientCode={patient.patient_code}
