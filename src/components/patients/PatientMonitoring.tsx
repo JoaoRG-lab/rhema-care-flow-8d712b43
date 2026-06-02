@@ -1,4 +1,4 @@
- import { useEffect, useState, type ReactNode } from 'react';
+ import { useCallback, useEffect, useState, type ReactNode } from 'react';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
@@ -28,8 +28,13 @@
    const [dueDate, setDueDate] = useState('');
    const [notes, setNotes] = useState('');
  
-   const fetchEvents = async () => {
-     if (!user) return;
+   const fetchEvents = useCallback(async () => {
+     if (!user) {
+       setEvents([]);
+       setLoading(false);
+       return;
+     }
+     setLoading(true);
      const { data, error } = await supabase
         .from('monitoring_events_secure')
        .select('*')
@@ -39,11 +44,11 @@
  
       if (data) setEvents(data as MonitoringEvent[]);
      setLoading(false);
-   };
+   }, [patientId, user]);
  
    useEffect(() => {
      fetchEvents();
-   }, [user, patientId, refreshKey]);
+   }, [fetchEvents, refreshKey]);
  
    const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();

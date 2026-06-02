@@ -228,7 +228,7 @@
        setValues(initial);
      }
      setCalculatedScore(null);
-   }, [selectedType, lastScores]);
+   }, [selectedType, lastScores, getLastScore]);
  
    // Calculate score whenever values change
    useEffect(() => {

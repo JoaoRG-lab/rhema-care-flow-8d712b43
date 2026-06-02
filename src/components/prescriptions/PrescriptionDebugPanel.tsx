@@ -57,7 +57,7 @@ export function PrescriptionDebugPanel({ rx, source, context }: PrescriptionDebu
       hasSignature: !!rx.signature_data_url,
       ...context,
     });
-  }, [rx.id, rx.status, rx.updated_at, source, context]);
+  }, [rx.cid10, rx.id, rx.items, rx.signature_data_url, rx.status, rx.updated_at, source, context]);
 
   const fingerprint = useMemo(
     () => ({
