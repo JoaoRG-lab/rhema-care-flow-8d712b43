@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,11 +56,7 @@ export function PeerReviewPanel({ contentId, contentType }: PeerReviewPanelProps
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadReviews();
-  }, [contentId]);
-
-  async function loadReviews() {
+  const loadReviews = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from('peer_reviews')
@@ -79,7 +75,11 @@ export function PeerReviewPanel({ contentId, contentType }: PeerReviewPanelProps
       }
     }
     setLoading(false);
-  }
+  }, [contentId, contentType, user?.id]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
 
   const approvedCount = reviews.filter(r => r.status === 'approved').length;
   const isFullyReviewed = approvedCount >= 2;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -107,7 +107,7 @@ export function PatientChainAnchorPanel({ patientCardId, patientCode }: Props) {
     toast.success("Verification trail cleared");
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("patient_chain_anchors")
@@ -120,11 +120,11 @@ export function PatientChainAnchorPanel({ patientCardId, patientCode }: Props) {
       setAnchors((data ?? []) as AnchorRow[]);
     }
     setLoading(false);
-  };
+  }, [patientCardId]);
 
   useEffect(() => {
     if (user) load();
-  }, [user, patientCardId]);
+  }, [user, load]);
 
   const createAnchor = async () => {
     if (!user) return;

@@ -1,4 +1,4 @@
- import { useEffect, useState, type ReactNode } from 'react';
+ import { useCallback, useEffect, useState, type ReactNode } from 'react';
  import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/contexts/AuthContext';
@@ -29,8 +29,13 @@
    const [scores, setScores] = useState<ScoreEntry[]>([]);
    const [loading, setLoading] = useState(true);
  
-   const fetchScores = async () => {
-     if (!user) return;
+   const fetchScores = useCallback(async () => {
+     if (!user) {
+       setScores([]);
+       setLoading(false);
+       return;
+     }
+     setLoading(true);
      const { data, error } = await supabase
         .from('score_entries_secure')
        .select('id, score_type, calculated_score, created_at')
@@ -40,11 +45,11 @@
  
       if (data) setScores(data as ScoreEntry[]);
      setLoading(false);
-   };
+   }, [patientId, user]);
  
    useEffect(() => {
      fetchScores();
-   }, [user, patientId, refreshKey]);
+   }, [fetchScores, refreshKey]);
  
    if (loading) {
      return (

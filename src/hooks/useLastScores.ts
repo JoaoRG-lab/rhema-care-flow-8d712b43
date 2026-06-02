@@ -1,4 +1,4 @@
- import { useState, useEffect } from 'react';
+ import { useState, useEffect, useCallback } from 'react';
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/contexts/AuthContext';
  
@@ -57,9 +57,9 @@
      fetchLastScores();
    }, [user, patientId]);
  
-   const getLastScore = (scoreType: string): LastScoreData | null => {
+   const getLastScore = useCallback((scoreType: string): LastScoreData | null => {
      return lastScores[scoreType] || null;
-   };
+   }, [lastScores]);
  
    return { lastScores, loading, getLastScore };
  }
