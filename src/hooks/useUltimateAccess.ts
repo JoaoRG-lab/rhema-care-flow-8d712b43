@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from "@/integrations/supabase/client";
-
-const ULTIMATE_FALLBACK_EMAIL = "joaooz123@gmail.com";
+import { isUltimateUserEmail } from "@/lib/ultimateUser";
 
 interface UltimateAccessState {
   allowed: boolean;
@@ -28,7 +27,7 @@ export function useUltimateAccess(): UltimateAccessState {
         return;
       }
 
-      const emailAllowed = user.email?.toLowerCase() === ULTIMATE_FALLBACK_EMAIL;
+      const emailAllowed = isUltimateUserEmail(user.email);
       if (emailAllowed) {
         setState({ allowed: true, loading: false, reason: "email" });
         return;

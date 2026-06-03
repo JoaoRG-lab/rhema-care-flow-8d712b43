@@ -115,8 +115,6 @@ const AGENT_META: Record<
   },
 };
 
-const ALLOWED_EMAIL = "joaooz123@gmail.com";
-
 function edgeInvokeError(error: string | null, data: unknown): string | null {
   if (error) return formatConsoleRuntimeError(error);
   const payload = data as { error?: unknown } | null;

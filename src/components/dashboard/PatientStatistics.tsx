@@ -55,10 +55,17 @@ interface StatsData {
    const { user } = useAuth();
    const [stats, setStats] = useState<StatsData | null>(null);
    const [loading, setLoading] = useState(true);
+   const [errorMessage, setErrorMessage] = useState<string | null>(null);
  
    useEffect(() => {
      const fetchStatistics = async () => {
-       if (!user) return;
+       if (!user) {
+         setLoading(false);
+         return;
+       }
+
+       setLoading(true);
+       setErrorMessage(null);
  
        const monthStart = startOfMonth(new Date());
        const monthEnd = endOfMonth(new Date());
@@ -66,13 +73,13 @@ interface StatsData {
  
        try {
          // Fetch all patient data
-         const { data: patients } = await supabase
+         const { data: patients, error: patientsError } = await supabase
            .from('patient_cards_secure')
            .select('id, created_at, diagnosis_tags, therapy_tags')
            .eq('user_id', user.id);
  
          // Fetch visits this month
-         const { data: visits } = await supabase
+         const { data: visits, error: visitsError } = await supabase
            .from('visits_secure')
            .select('id, visit_date, patient_card_id')
            .eq('user_id', user.id)
@@ -80,15 +87,22 @@ interface StatsData {
            .lte('visit_date', format(monthEnd, 'yyyy-MM-dd'));
  
          // Fetch score entries
-         const { data: scores } = await supabase
+         const { data: scores, error: scoresError } = await supabase
            .from('score_entries_secure')
            .select('score_type, calculated_score, created_at')
            .eq('user_id', user.id)
            .gte('created_at', thirtyDaysAgo.toISOString());
+
+         const queryErrors = [patientsError, visitsError, scoresError].filter(Boolean);
+         if (queryErrors.length > 0) {
+           const message = queryErrors.map(error => error?.message).join(' | ');
+           setErrorMessage(message);
+           setStats(null);
+           return;
+         }
  
          if (!patients) {
            setStats(null);
-           setLoading(false);
            return;
          }
  
@@ -156,6 +170,8 @@ interface StatsData {
          });
        } catch (error) {
          console.error('Error fetching statistics:', error);
+         setErrorMessage(error instanceof Error ? error.message : 'Could not load statistics.');
+         setStats(null);
        } finally {
          setLoading(false);
        }
@@ -179,8 +195,12 @@ interface StatsData {
        <Card className="col-span-full">
          <CardContent className="py-8 text-center">
            <BarChart3 className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-           <p className="text-muted-foreground">No patient data yet</p>
-           <p className="text-sm text-muted-foreground mt-1">Add patients to see statistics</p>
+           <p className="text-muted-foreground">
+             {errorMessage ? 'Statistics unavailable right now' : 'No patient data yet'}
+           </p>
+           <p className="text-sm text-muted-foreground mt-1">
+             {errorMessage ?? 'Add patients to see statistics'}
+           </p>
          </CardContent>
        </Card>
      );

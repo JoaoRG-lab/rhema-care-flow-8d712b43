@@ -20,6 +20,7 @@ import {
   Blocks,
   Link2,
   Brain,
+  TerminalSquare,
 } from 'lucide-react';
 
 interface QuickAction {
@@ -234,6 +235,34 @@ const TIER_ACTIONS: Record<string, QuickAction[]> = {
       href: '/settings',
     },
   ],
+  ultimate: [
+    {
+      label: 'Code Console',
+      description: 'Orchestrate code changes',
+      icon: TerminalSquare,
+      href: '/code-console',
+      variant: 'default',
+    },
+    {
+      label: 'Engine Ops',
+      description: 'AI engine mesh',
+      icon: Brain,
+      href: '/engine-ops',
+    },
+    {
+      label: 'Admin Panel',
+      description: 'Review platform state',
+      icon: Shield,
+      href: '/admin',
+    },
+    {
+      label: 'URV Chain',
+      description: 'Full audit trail',
+      icon: Blocks,
+      href: '/blockchain',
+      isBlockchain: true,
+    },
+  ],
 };
 
 const TIER_MESSAGES: Record<string, { title: string; subtitle: string }> = {
@@ -264,6 +293,10 @@ const TIER_MESSAGES: Record<string, { title: string; subtitle: string }> = {
   partner: {
     title: 'Partner Account',
     subtitle: 'Welcome to our partnership program. Explore our clinical solutions.',
+  },
+  ultimate: {
+    title: 'Ultimate Coordinator',
+    subtitle: 'Full operational access enabled for clinical, code, audit, and engine workflows.',
   },
 };
 

@@ -5,6 +5,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { DiagnosisTag } from '@/components/ui/DiagnosisTag';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useVerificationStatus } from '@/hooks/useVerificationStatus';
@@ -146,6 +147,7 @@ export default function Dashboard() {
   const [upcomingFollowups, setUpcomingFollowups] = useState<PatientCard[]>([]);
   const [infusionCount, setInfusionCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   // Checklist persisted by calendar day
@@ -175,59 +177,94 @@ export default function Dashboard() {
   useDailyCompliment();
 
   const fetchData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setDashboardError(null);
     const today = new Date();
     const nextWeek = addDays(today, 7);
+    const errors: string[] = [];
 
-    // FIX: all queries now handle errors explicitly
-    const { data: patientData, error: patientError } = await supabase
-      .from('patient_cards_secure')
-      .select('*')
-      .eq('user_id', user.id);
+    try {
+      const { data: patientData, error: patientError } = await supabase
+        .from('patient_cards_secure')
+        .select('*')
+        .eq('user_id', user.id);
 
-    if (patientError) {
-      toast({ title: 'Erro ao carregar pacientes', description: patientError.message, variant: 'destructive' });
+      if (patientError) {
+        errors.push(`Pacientes: ${patientError.message}`);
+        setPatients([]);
+        setUpcomingFollowups([]);
+      } else {
+        const safePatientData = patientData ?? [];
+        setPatients(safePatientData);
+        const upcoming = safePatientData.filter(p => {
+          if (!p.next_followup_date) return false;
+          const followupDate = new Date(p.next_followup_date);
+          return isAfter(followupDate, today) && isBefore(followupDate, nextWeek);
+        });
+        setUpcomingFollowups(upcoming.slice(0, 5));
+      }
+
+      const { data: monitoringData, error: monitoringError } = await supabase
+        .from('monitoring_events_secure')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .lte('due_date', format(nextWeek, 'yyyy-MM-dd'))
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      if (monitoringError) {
+        errors.push(`Monitoramento: ${monitoringError.message}`);
+        setMonitoringAlerts([]);
+      } else {
+        setMonitoringAlerts(monitoringData ?? []);
+      }
+
+      const { count: infCount, error: infusionError } = await supabase
+        .from('monitoring_events_secure')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('event_type', 'infusion')
+        .eq('status', 'pending');
+
+      if (infusionError) {
+        errors.push(`Infusões: ${infusionError.message}`);
+        setInfusionCount(0);
+      } else {
+        setInfusionCount(infCount ?? 0);
+      }
+
+      if (errors.length > 0) {
+        const message = errors.join(' | ');
+        setDashboardError(message);
+        toast({
+          title: 'Dashboard carregado parcialmente',
+          description: 'Algumas consultas clínicas não responderam. A tela continua disponível.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Dashboard fetch failed:', error);
+      setDashboardError(error instanceof Error ? error.message : 'Falha inesperada ao carregar o dashboard.');
+      setPatients([]);
+      setUpcomingFollowups([]);
+      setMonitoringAlerts([]);
+      setInfusionCount(0);
+    } finally {
+      setLoading(false);
     }
-
-    const { data: monitoringData, error: monitoringError } = await supabase
-      .from('monitoring_events_secure')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'pending')
-      .lte('due_date', format(nextWeek, 'yyyy-MM-dd'))
-      .order('due_date', { ascending: true })
-      .limit(5);
-
-    if (monitoringError) {
-      toast({ title: 'Erro ao carregar monitoramento', description: monitoringError.message, variant: 'destructive' });
-    }
-
-    // Fetch real infusion count
-    const { count: infCount } = await supabase
-      .from('monitoring_events_secure')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('event_type', 'infusion')
-      .eq('status', 'pending');
-
-    setInfusionCount(infCount ?? 0);
-
-    if (patientData) {
-      setPatients(patientData);
-      const upcoming = patientData.filter(p => {
-        if (!p.next_followup_date) return false;
-        const followupDate = new Date(p.next_followup_date);
-        return isAfter(followupDate, today) && isBefore(followupDate, nextWeek);
-      });
-      setUpcomingFollowups(upcoming.slice(0, 5));
-    }
-
-    if (monitoringData) setMonitoringAlerts(monitoringData);
-    setLoading(false);
   }, [user, toast]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     fetchData();
   }, [user, fetchData]);
 
@@ -268,6 +305,7 @@ export default function Dashboard() {
     const displayName = formatName();
     switch (tier) {
       case 'expert': return `${timeGreeting}, ${displayName}! Sua expertise guia nossa comunidade.`;
+      case 'ultimate': return `${timeGreeting}, ${displayName || 'Joao'}! Coordenação ultimate ativa.`;
       case 'gold': return `${timeGreeting}, ${displayName}! Obrigado pelas contribuições verificadas.`;
       case 'developer': return `${timeGreeting}, ${displayName}! Construindo algo grandioso.`;
       case 'partner': return `${timeGreeting}, ${displayName}! Que bom ter você aqui.`;
@@ -382,6 +420,16 @@ export default function Dashboard() {
         <div className="mb-6 md:mb-8">
           <WelcomeCard tier={tier} fullName={fullName} />
         </div>
+
+        {dashboardError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Dashboard carregado parcialmente</AlertTitle>
+            <AlertDescription>
+              {dashboardError}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">

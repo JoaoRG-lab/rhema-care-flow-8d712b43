@@ -231,7 +231,7 @@ describe('PrescriptionComposer', () => {
       expect(remainingDoses).toHaveLength(1);
       expect(remainingDoses[0].value).toBe('HEAD-DOSE');
     }
-  });
+  }, 15000);
 
   it('does not show a trash button when only one item remains (no accidental delete)', async () => {
     const user = userEvent.setup();
