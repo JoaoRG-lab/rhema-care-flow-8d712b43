@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/hooks/useAuth';
+import { isUltimateUserEmail } from "@/lib/ultimateUser";
 import {
   Activity,
   Bot,
@@ -16,8 +17,6 @@ import {
   ShieldCheck,
   TerminalSquare,
 } from "lucide-react";
-
-const ALLOWED_EMAIL = "joaooz123@gmail.com";
 
 const engines = [
   {
@@ -69,7 +68,7 @@ const engines = [
 
 export default function EngineOps() {
   const { user } = useAuth();
-  const allowed = user?.email?.toLowerCase() === ALLOWED_EMAIL || user?.app_metadata?.ultimate_user === true;
+  const allowed = isUltimateUserEmail(user?.email) || user?.app_metadata?.ultimate_user === true;
 
   if (!allowed) {
     return (
