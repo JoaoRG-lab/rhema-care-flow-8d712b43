@@ -330,18 +330,19 @@ export default function CodeConsole() {
       return;
     }
     setConsoleError(null);
-    const files = (data?.files ?? []) as DeploymentFile[];
+    const planData = (data ?? {}) as Partial<DeploymentPlan> & { files?: DeploymentFile[] };
+    const files = (planData.files ?? []) as DeploymentFile[];
     setDeploymentPlans((plans) => ({
       ...plans,
       [messageId]: {
-        branch: String(data.branch ?? "codex/code-console"),
-        baseBranch: data.baseBranch ? String(data.baseBranch) : undefined,
-        repo: data.repo ? String(data.repo) : undefined,
-        parentSha: String(data.parentSha ?? ""),
+        branch: String(planData.branch ?? "codex/code-console"),
+        baseBranch: planData.baseBranch ? String(planData.baseBranch) : undefined,
+        repo: planData.repo ? String(planData.repo) : undefined,
+        parentSha: String(planData.parentSha ?? ""),
         files,
       },
     }));
-    toast.success(`${files.length} arquivo(s) pronto(s) para aplicar em ${data.branch}.`);
+    toast.success(`${files.length} arquivo(s) pronto(s) para aplicar em ${planData.branch ?? "branch"}.`);
   }
 
   async function applyFiles(messageId: string) {
