@@ -13,15 +13,25 @@ const isChunkLoadError = (msg: string) =>
   /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk \d+ failed/i.test(
     msg,
   );
+let lastReloadAttempt = 0;
 const tryReload = () => {
+  const now = Date.now();
+  if (now - lastReloadAttempt < 10_000) return;
+  lastReloadAttempt = now;
   try {
     const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || "0");
-    if (Date.now() - last < 10_000) return; // avoid infinite reload loop
-    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+    if (now - last < 10_000) return;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(now));
   } catch {
     // sessionStorage unavailable — still attempt reload once
   }
-  window.location.reload();
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("_r", String(now));
+    window.location.replace(url.toString());
+  } catch {
+    window.location.reload();
+  }
 };
 window.addEventListener("error", (e) => {
   if (e?.message && isChunkLoadError(e.message)) tryReload();
