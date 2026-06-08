@@ -413,7 +413,7 @@ export default function CodeConsole() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <p>O Code Console multi-agente está habilitado apenas para a conta autorizada.</p>
-            <p>Faça login com <span className="font-mono text-foreground">{ALLOWED_EMAIL}</span> para continuar.</p>
+            <p>Faça login com a conta autorizada para continuar.</p>
             {user?.email && (
               <p className="pt-2">Sessão atual: <span className="font-mono">{user.email}</span></p>
             )}
