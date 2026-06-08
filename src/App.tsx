@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy as reactLazy, Suspense, type ComponentType } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,25 @@ import { useAccountType } from "@/hooks/useAccountType";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useSiteTracker } from "@/hooks/useSiteTracker";
 import CodeConsoleLauncher from "@/components/CodeConsoleLauncher";
+
+const isChunkLoadError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk \d+ failed/i.test(message);
+};
+
+const reloadForFreshChunks = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.set("_r", String(Date.now()));
+  window.location.replace(url.toString());
+};
+
+const lazy = <T extends ComponentType<unknown>>(loader: () => Promise<{ default: T }>) =>
+  reactLazy(() =>
+    loader().catch((error) => {
+      if (isChunkLoadError(error)) reloadForFreshChunks();
+      throw error;
+    }),
+  );
 
 // Activity tracker wrapper component
 function ActivityTracker({ children }: { children: React.ReactNode }) {
