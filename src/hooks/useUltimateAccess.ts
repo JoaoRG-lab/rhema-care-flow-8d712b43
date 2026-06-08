@@ -33,14 +33,28 @@ export function useUltimateAccess(): UltimateAccessState {
         return;
       }
 
-      const custodyPromise = supabase
+      const sb = supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (a: string, b: unknown) => {
+              eq: (a: string, b: unknown) => {
+                eq: (a: string, b: unknown) => {
+                  maybeSingle: () => Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+                };
+              };
+            };
+          };
+        };
+        rpc: (n: string, args: Record<string, unknown>) => Promise<{ data: boolean | null; error: { message: string } | null }>;
+      };
+      const custodyPromise = sb
         .from("ultimate_user_custody")
         .select("id")
         .eq("user_id", user.id)
         .eq("custody_status", "locked")
         .eq("installation_status", "active")
-        .maybeSingle() as unknown as Promise<{ data: { id: string } | null; error: { message: string } | null }>;
-      const profilePromise = supabase.rpc("is_ultimate_user", { _user_id: user.id }) as unknown as Promise<{ data: boolean | null; error: { message: string } | null }>;
+        .maybeSingle();
+      const profilePromise = sb.rpc("is_ultimate_user", { _user_id: user.id });
       const [{ data: custody, error: custodyError }, { data: profileUltimate, error: profileError }] = await Promise.all([custodyPromise, profilePromise]);
 
       if (cancelled) return;
