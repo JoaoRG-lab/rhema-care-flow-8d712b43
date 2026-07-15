@@ -117,6 +117,8 @@ const ProblemDetailPage = lazy(() => import("./pages/ProblemDetailPage"));
 const PatientScoresPage = lazy(() => import("./pages/PatientScoresPage"));
 const PatientTherapeuticSafetyPage = lazy(() => import("./pages/PatientTherapeuticSafetyPage"));
 const AIIntegrationPage = lazy(() => import("./pages/AIIntegrationPage"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
