@@ -117,6 +117,8 @@ const ProblemDetailPage = lazy(() => import("./pages/ProblemDetailPage"));
 const PatientScoresPage = lazy(() => import("./pages/PatientScoresPage"));
 const PatientTherapeuticSafetyPage = lazy(() => import("./pages/PatientTherapeuticSafetyPage"));
 const AIIntegrationPage = lazy(() => import("./pages/AIIntegrationPage"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -242,7 +244,9 @@ const App = () => (
                       {/* FIX: debug route now requires authentication */}
                       <Route path="/debug/loops" element={<ProtectedRoute><LoopDebug /></ProtectedRoute>} />
                       <Route path="/ai-integration" element={<ProtectedRoute><AIIntegrationPage /></ProtectedRoute>} />
+                      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                       <Route path="*" element={<NotFound />} />
+
                     </Routes>
                   </Suspense>
                   <CodeConsoleLauncher />
