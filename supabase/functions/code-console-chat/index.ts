@@ -15,12 +15,13 @@ const MAX_PROMPT_CHARS = 12000;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
-const CUSTOM_AI_API_KEY = Deno.env.get("CUSTOM_AI_API_KEY");
-const CUSTOM_AI_BASE_URL = Deno.env.get("CUSTOM_AI_BASE_URL");
-const CUSTOM_AI_MODEL = Deno.env.get("CUSTOM_AI_MODEL");
 const CONSOLE_ALLOWED_EMAIL = (Deno.env.get("CONSOLE_ALLOWED_EMAIL") || "joaooz123@gmail.com").trim().toLowerCase();
+
+function getRequiredSecret(name: string): string {
+  const value = Deno.env.get(name)?.trim();
+  if (!value) throw new Error(`${name} ausente no ambiente da Edge Function`);
+  return value;
+}
 
 // Sentinel — destructive-code heuristics. Returns warning text or null.
 function sentinelScan(text: string): string | null {
@@ -44,7 +45,7 @@ function sentinelScan(text: string): string | null {
 }
 
 async function callLovableGateway(model: string, system: string, user: string): Promise<string> {
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+  const LOVABLE_API_KEY = getRequiredSecret("LOVABLE_API_KEY");
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -70,7 +71,7 @@ async function callLovableGateway(model: string, system: string, user: string): 
 }
 
 async function callPerplexity(prompt: string): Promise<{ content: string; citations: unknown }> {
-  if (!PERPLEXITY_API_KEY) throw new Error("PERPLEXITY_API_KEY ausente");
+  const PERPLEXITY_API_KEY = getRequiredSecret("PERPLEXITY_API_KEY");
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
     headers: {
@@ -97,6 +98,9 @@ async function callPerplexity(prompt: string): Promise<{ content: string; citati
 }
 
 async function callCustom(system: string, user: string): Promise<string> {
+  const CUSTOM_AI_API_KEY = Deno.env.get("CUSTOM_AI_API_KEY")?.trim();
+  const CUSTOM_AI_BASE_URL = Deno.env.get("CUSTOM_AI_BASE_URL")?.trim();
+  const CUSTOM_AI_MODEL = Deno.env.get("CUSTOM_AI_MODEL")?.trim();
   if (!CUSTOM_AI_API_KEY || !CUSTOM_AI_BASE_URL || !CUSTOM_AI_MODEL) {
     throw new Error("CUSTOM_AI_API_KEY / CUSTOM_AI_BASE_URL / CUSTOM_AI_MODEL não configurados");
   }
@@ -275,7 +279,7 @@ Deno.serve(async (req) => {
         assistantContent = r.content;
         citations = r.citations;
       } else {
-        modelUsed = CUSTOM_AI_MODEL ?? "custom";
+        modelUsed = Deno.env.get("CUSTOM_AI_MODEL")?.trim() ?? "custom";
         assistantContent = await callCustom(systemBase, `Contexto:\n${historyText}\n\n${prompt}`);
       }
     } catch (error) {
