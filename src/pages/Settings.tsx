@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { VerifiedBadge, VerificationStatusBadge } from '@/components/ui/VerifiedBadge';
 import { LanguageSelector } from '@/components/ui/language-selector';
 import { SpecialtyQuickSwitcher } from '@/components/layout/SpecialtyQuickSwitcher';
+import AIIntegrationPanel from '@/components/settings/AIIntegrationPanel';
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -53,6 +54,8 @@ export default function Settings() {
               </CardHeader>
             </Link>
           </Card>
+
+          <AIIntegrationPanel />
 
           {/* Language Settings */}
           <Card>
