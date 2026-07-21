@@ -5,6 +5,7 @@ import { SpecialtyQuickSwitcher } from './SpecialtyQuickSwitcher';
 import { usePersona } from '@/hooks/usePersona';
 import { useAccountType } from '@/hooks/useAccountType';
 import { Link } from 'react-router-dom';
+import { AIIntegrationStatusIndicator } from '@/components/settings/AIIntegrationStatusIndicator';
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
@@ -45,6 +46,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          <AIIntegrationStatusIndicator className="mr-1" />
           <Button
             variant="ghost"
             size="icon"
