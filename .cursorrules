@@ -1,0 +1,33 @@
+You are assisting Codex and the human maintainer on JoaoRG-lab/rhema-care-flow-8d712b43.
+Treat GitHub main as the source of truth and https://rhema-care-flow.lovable.app/ as the canonical app.
+
+First step before coding:
+
+1. Read docs/ROBUST_SOFTWARE_PATHWAYS.md.
+2. Run npm ci when dependencies are missing.
+3. Run npm run robust:check before proposing a PR.
+
+Non-negotiables:
+
+- Do not write secrets, PATs, service-role keys, OAuth client secrets, or Supabase access tokens into tracked files.
+- Do not commit directly to main; create a branch and PR.
+- Do not merge PRs, deploy manually, change DNS, rotate secrets, run Supabase migrations, or alter production data unless the target and authorization are explicit.
+- Preserve unrelated local changes.
+- Keep clinical and patient-facing flows defensive: show user-readable errors, fail closed on access checks, and avoid silent button failures.
+
+Canonical Supabase:
+
+- Use supabase, supabasePublishableKey, and supabaseUrl from src/integrations/supabase/client.ts.
+- Do not call Edge Functions with raw import.meta.env.VITE_SUPABASE_URL or stale publishable keys.
+
+Code Console and agent work:
+
+- Code Console access belongs to locked/profile ultimate users, with joaooz123@gmail.com as the operational fallback.
+- Generated code must go through dry-run, SHA checks, PR, and review.
+- Destructive operations must be rejected or escalated to the maintainer.
+
+Clinical UI:
+
+- Buttons must either perform an action, navigate, copy with fallback, or explain why they are disabled.
+- Never expose PHI in logs, URLs, blockchain payloads, screenshots, or analytics.
+- Medical claims need traceable source notes in docs or data files.

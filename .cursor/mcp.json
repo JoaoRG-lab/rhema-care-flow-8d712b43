@@ -5,7 +5,7 @@
       "command": "npx",
       "args": ["-y", "@supabase/mcp-server-supabase@latest", "--read-only"],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "sbp_75740ef5abbd592eed6648b8c943a2791a7a127a"
+        "SUPABASE_ACCESS_TOKEN": "SET_SUPABASE_ACCESS_TOKEN_IN_CURSOR_ENV"
       }
     },
 

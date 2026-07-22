@@ -44,7 +44,7 @@ Visit `http://localhost:5173` and check browser console for errors.
 ### Don't Do This ❌
 ```typescript
 // ❌ WRONG: Exposing secrets in code
-const token = "sbp_3b0fc88a7dbfa5d5887919c90e70a7e19d6f5dda";
+const token = "<supabase-access-token>";
 const supabase = createClient(URL, token);
 ```
 
@@ -58,11 +58,11 @@ const supabase = createClient(
 ```
 
 ### GitHub Secrets for CI/CD
-If you use GitHub Actions, add secrets in **Settings → Secrets and variables → Actions**:
+If you use GitHub Actions, add runtime credentials in **Settings → Secrets and variables → Actions**:
 ```
 SUPABASE_URL
 SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY  # Only for backend/migrations
+SUPABASE_SERVICE_ROLE_KEY  # Backend/migrations only
 ```
 
 ## 📊 Database Schema
