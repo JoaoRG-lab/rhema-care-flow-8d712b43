@@ -1,14 +1,17 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlugZap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { isUltimateUserEmail } from "@/lib/ultimateUser";
+import { supabase } from "@/integrations/supabase/client";
 import { testConnection, type MCPConnectionState } from "@/lib/mcp/client";
+import { onMcpStatus, emitMcpStatus } from "@/lib/mcp/statusBus";
 
 const CACHE_KEY = "mcp:last-status";
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const REFRESH_DEBOUNCE_MS = 400;
 
 type CachedStatus = { state: MCPConnectionState; at: number };
 
@@ -32,10 +35,20 @@ function writeCache(state: MCPConnectionState) {
   }
 }
 
+function clearCache() {
+  try {
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
- * Discreet AI integration status indicator. Uses a session-cached status
- * to avoid polling the endpoint on every render. Only rendered for users
- * authorized to see integration state.
+ * Discreet AI integration status indicator. Event-driven refresh:
+ *  - Uses a session cache (5 min TTL) to avoid polling.
+ *  - Re-probes on Supabase auth SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED.
+ *  - Re-probes when the MCP client emits `unauthorized` via the status bus.
+ *  - Re-probes when the tab becomes visible after being hidden > TTL.
  */
 export function AIIntegrationStatusIndicator({ className }: { className?: string }) {
   const { user, session } = useAuth();
@@ -43,29 +56,101 @@ export function AIIntegrationStatusIndicator({ className }: { className?: string
   const canSee = isAdmin || isUltimateUserEmail(user?.email);
 
   const [state, setState] = useState<MCPConnectionState>(() => readCache()?.state ?? "idle");
+  const inflightRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!canSee || !session?.access_token) return;
-    const cached = readCache();
-    if (cached) {
-      setState(cached.state);
-      return;
+    if (!canSee) return;
+
+    // Coalesce bursts of triggers (auth change + status-bus invalidate) into one probe.
+    function scheduleProbe(force: boolean) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => runProbe(force), REFRESH_DEBOUNCE_MS);
     }
-    let cancelled = false;
-    testConnection()
-      .then((r) => {
-        if (cancelled) return;
+
+    async function runProbe(force: boolean) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        clearCache();
+        setState("unauthorized");
+        return;
+      }
+      if (!force) {
+        const cached = readCache();
+        if (cached) {
+          setState(cached.state);
+          return;
+        }
+      }
+      inflightRef.current?.abort();
+      const ctrl = new AbortController();
+      inflightRef.current = ctrl;
+      setState("connecting");
+      try {
+        const r = await testConnection(ctrl.signal);
+        if (ctrl.signal.aborted) return;
         setState(r.state);
         writeCache(r.state);
-      })
-      .catch(() => {
-        if (cancelled) return;
+      } catch {
+        if (ctrl.signal.aborted) return;
         setState("error");
         writeCache("error");
-      });
+      }
+    }
+
+    // Initial probe (uses cache when warm).
+    scheduleProbe(false);
+
+    // React to Supabase auth transitions.
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        clearCache();
+        inflightRef.current?.abort();
+        setState("unauthorized");
+        emitMcpStatus({ type: "state", state: "unauthorized" });
+        return;
+      }
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        clearCache();
+        scheduleProbe(true);
+      }
+    });
+
+    // React to unauthorized RPCs bubbling from the client.
+    const offBus = onMcpStatus((e) => {
+      if (e.type === "invalidate") {
+        clearCache();
+        scheduleProbe(true);
+      }
+    });
+
+    // Re-probe on tab visibility if cache is stale.
+    function onVisibility() {
+      if (document.visibilityState !== "visible") return;
+      if (!readCache()) scheduleProbe(false);
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
-      cancelled = true;
+      authSub.subscription.unsubscribe();
+      offBus();
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      inflightRef.current?.abort();
     };
+  }, [canSee]);
+
+  // Track session identity: if the access token changes underneath us (e.g.
+  // another tab refreshed the session), invalidate the cached status.
+  useEffect(() => {
+    if (!canSee) return;
+    if (session?.access_token) {
+      // Auth listener above already handles SIGNED_IN; nothing to do here.
+      return;
+    }
+    clearCache();
+    setState("unauthorized");
   }, [canSee, session?.access_token]);
 
   if (!canSee) return null;

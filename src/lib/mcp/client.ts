@@ -14,6 +14,8 @@
 import { supabase, supabaseUrl } from "@/integrations/supabase/client";
 import { isInvocable, isSafeOperationalTool } from "./registry";
 import { recordEvent } from "./eventLog";
+import { emitMcpStatus } from "./statusBus";
+
 
 export type MCPConnectionState =
   | "idle"
@@ -148,8 +150,10 @@ async function jsonRpc<T>(method: string, params?: Record<string, unknown>, opts
         }
 
         if (response.status === 401 || response.status === 403) {
+          emitMcpStatus({ type: "invalidate", reason: "unauthorized" });
           throw new MCPError("Autenticação MCP inválida ou expirada.", "unauthorized", response.status);
         }
+
 
         const rawText = await response.text();
         let payload: unknown;
