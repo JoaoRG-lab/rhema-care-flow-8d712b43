@@ -36,9 +36,69 @@ var whoami_default = defineTool({
   }
 });
 
+// src/lib/mcp/tools/health.ts
+import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.2";
+var BOOT_TIME = Date.now();
+var VERSION = "0.1.0";
+var health_default = defineTool2({
+  name: "health",
+  title: "Health check",
+  description: "Returns non-PHI operational metrics for the Rhema Care Flow MCP server: version, uptime, timestamp, and database reachability.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const startedAt = performance.now();
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+    let dbReachable = false;
+    let dbLatencyMs = null;
+    let dbError = null;
+    if (url && key) {
+      try {
+        const t0 = performance.now();
+        const res = await fetch(`${url}/rest/v1/`, {
+          method: "GET",
+          headers: { apikey: key, Authorization: `Bearer ${ctx.getToken()}` }
+        });
+        dbLatencyMs = Math.round(performance.now() - t0);
+        dbReachable = res.ok || res.status === 404;
+        if (!dbReachable) dbError = `HTTP ${res.status}`;
+      } catch (err) {
+        dbError = err instanceof Error ? err.message : "unknown";
+      }
+    } else {
+      dbError = "Supabase env not configured";
+    }
+    const payload = {
+      status: dbReachable ? "ok" : "degraded",
+      version: VERSION,
+      server: "rhema-care-flow-mcp",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      uptimeMs: Date.now() - BOOT_TIME,
+      handlerLatencyMs: Math.round(performance.now() - startedAt),
+      database: {
+        reachable: dbReachable,
+        latencyMs: dbLatencyMs,
+        error: dbError
+      },
+      auth: {
+        authenticated: true,
+        clientId: ctx.getClientId() ?? null
+      }
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
 // src/lib/mcp/tools/list-patients.ts
 import { createClient } from "npm:@supabase/supabase-js@^2.94.1";
-import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z } from "npm:zod@^3.25.76";
 var ALLOWED_EMAIL2 = "joaooz123@gmail.com";
 function ensureAllowed(ctx) {
@@ -56,7 +116,7 @@ function supabaseForUser(ctx) {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
-var list_patients_default = defineTool2({
+var list_patients_default = defineTool3({
   name: "list_patients",
   title: "List patients",
   description: "List the signed-in clinician's patient cards from the Rhema Care Flow database (respects Row Level Security).",
@@ -90,7 +150,7 @@ var mcp_default = defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [whoami_default, list_patients_default]
+  tools: [whoami_default, health_default, list_patients_default]
 });
 
 // lovable-mcp-supabase-entry.ts
