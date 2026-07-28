@@ -132,7 +132,28 @@ export default function AIIntegrationPanel() {
                     Identidade MCP: {diag.identity.email}
                   </div>
                 )}
+                {diag.health && (
+                  <div className="text-xs text-muted-foreground space-y-0.5 pt-1 border-t border-primary/20 mt-1">
+                    <div>
+                      Servidor: <span className="font-mono">{diag.health.status ?? "?"}</span>
+                      {diag.health.version && <> · v{diag.health.version}</>}
+                      {typeof diag.health.uptimeMs === "number" && (
+                        <> · uptime {Math.round(diag.health.uptimeMs / 1000)}s</>
+                      )}
+                    </div>
+                    {diag.health.database && (
+                      <div>
+                        DB: {diag.health.database.reachable ? "alcançável" : "indisponível"}
+                        {typeof diag.health.database.latencyMs === "number" && (
+                          <> · {diag.health.database.latencyMs} ms</>
+                        )}
+                        {diag.health.database.error && <> · {diag.health.database.error}</>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
             </div>
 
             <ToolLists discovered={diag.discoveredTools} safe={diag.safeTools} />

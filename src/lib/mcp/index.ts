@@ -1,6 +1,8 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import whoamiTool from "./tools/whoami";
+import healthTool from "./tools/health";
 import listPatientsTool from "./tools/list-patients";
+
 
 // The OAuth issuer MUST be the direct Supabase host derived from the project
 // ref at build time. VITE_SUPABASE_PROJECT_ID is inlined by Vite as a literal,
@@ -17,5 +19,5 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [whoamiTool, listPatientsTool],
+  tools: [whoamiTool, healthTool, listPatientsTool],
 });

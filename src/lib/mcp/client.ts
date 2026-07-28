@@ -245,18 +245,28 @@ export function parseToolJson<T>(result: MCPCallResult): T | null {
   try { return JSON.parse(text) as T; } catch { return null; }
 }
 
+export interface MCPHealthMetrics {
+  status?: string;
+  version?: string;
+  uptimeMs?: number;
+  handlerLatencyMs?: number;
+  timestamp?: string;
+  database?: { reachable?: boolean; latencyMs?: number | null; error?: string | null };
+}
+
 export interface DiagnosticResult {
   state: Extract<MCPConnectionState, "connected" | "unauthorized" | "unavailable" | "error">;
   message: string;
   endpoint: string;
   identity?: MCPWhoami;
+  health?: MCPHealthMetrics;
   discoveredTools: MCPTool[];
   safeTools: MCPTool[];
   latencyMs: number;
   errorCategory?: MCPErrorCategory;
 }
 
-/** Safe non-PHI diagnostic. Prefers whoami; falls back to tools/list. */
+/** Safe non-PHI diagnostic. Prefers whoami + health; falls back to tools/list. */
 export async function testConnection(signal?: AbortSignal): Promise<DiagnosticResult> {
   const endpoint = getMcpEndpoint();
   const started = performance.now();
@@ -266,6 +276,7 @@ export async function testConnection(signal?: AbortSignal): Promise<DiagnosticRe
     const safeTools = discoveredTools.filter((t) => isSafeOperationalTool(t.name));
 
     let identity: MCPWhoami | undefined;
+    let health: MCPHealthMetrics | undefined;
     let message = "Nenhuma ferramenta operacional segura disponível.";
 
     if (safeTools.some((t) => t.name === "whoami")) {
@@ -277,6 +288,22 @@ export async function testConnection(signal?: AbortSignal): Promise<DiagnosticRe
       message = "Conexão MCP validada via tools/list (sem PHI).";
     }
 
+    if (safeTools.some((t) => t.name === "health")) {
+      try {
+        const res = await callTool("health", {}, { signal });
+        if (!res.isError) {
+          health = parseToolJson<MCPHealthMetrics>(res) ?? undefined;
+          if (health?.status) {
+            message = `Conexão MCP OK — servidor ${health.status}${
+              health.database?.reachable ? ", DB alcançável" : ""
+            }.`;
+          }
+        }
+      } catch {
+        // Health metrics are optional; don't fail the diagnostic if only health errors.
+      }
+    }
+
     const latencyMs = Math.round(performance.now() - started);
     recordEvent({ type: "test", success: true, latencyMs });
     return {
@@ -284,6 +311,7 @@ export async function testConnection(signal?: AbortSignal): Promise<DiagnosticRe
       message,
       endpoint,
       identity,
+      health,
       discoveredTools,
       safeTools,
       latencyMs,
@@ -309,6 +337,7 @@ export async function testConnection(signal?: AbortSignal): Promise<DiagnosticRe
     };
   }
 }
+
 
 function mapDiagnosticMessage(category: MCPErrorCategory, err: unknown): string {
   switch (category) {

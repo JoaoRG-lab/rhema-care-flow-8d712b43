@@ -33,6 +33,22 @@
         "outputSchema": null
       },
       {
+        "name": "health",
+        "title": "Health check",
+        "description": "Returns non-PHI operational metrics for the Rhema Care Flow MCP server: version, uptime, timestamp, and database reachability.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_patients",
         "title": "List patients",
         "description": "List the signed-in clinician's patient cards from the Rhema Care Flow database (respects Row Level Security).",
