@@ -222,7 +222,21 @@ Deno.serve(async (req) => {
       "Nunca exponha segredos, force-push, rm -rf, DROP/TRUNCATE ou operações destrutivas sem salvaguardas explícitas.",
     ].join(" ");
 
-    const { content, model } = await callKimi(system, `Contexto da thread:\n${historyText}\n\nTarefa:\n${prompt}`);
+    const userPrompt = `Contexto da thread:\n${historyText}\n\nTarefa:\n${prompt}`;
+    let content: string;
+    let model: string;
+    try {
+      ({ content, model } = await callKimi(system, userPrompt));
+    } catch (err) {
+      if (err instanceof KimiError && err.status === 429) {
+        const fb = await callOpenRouterFallback(system, userPrompt);
+        if (!fb) throw err;
+        content = fb.content;
+        model = fb.model;
+      } else {
+        throw err;
+      }
+    }
     const warning = sentinelScan(content);
 
     let assistantInsert = await userClient
