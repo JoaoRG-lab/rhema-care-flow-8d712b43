@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Agent = "chatgpt" | "codex" | "perplexity" | "custom";
+type Agent = "chatgpt" | "codex" | "perplexity" | "custom" | "kimi";
 const MAX_PROMPT_CHARS = 12000;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -128,6 +128,35 @@ async function callCustom(system: string, user: string): Promise<string> {
   return data?.choices?.[0]?.message?.content ?? "";
 }
 
+async function callKimi(system: string, user: string): Promise<string> {
+  const KIMI_API_KEY = getRequiredSecret("KIMI_API_KEY");
+  const model = Deno.env.get("KIMI_MODEL")?.trim() || "kimi-k2-0905-preview";
+  const baseUrl = Deno.env.get("KIMI_BASE_URL")?.trim() || "https://api.moonshot.ai/v1";
+  const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${KIMI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: 0.3,
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    if (res.status === 429) throw new Error("Kimi: limite de requisições atingido (429).");
+    if (res.status === 401) throw new Error("Kimi: KIMI_API_KEY inválida (401).");
+    throw new Error(`Kimi erro ${res.status}: ${t.slice(0, 240)}`);
+  }
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content ?? "";
+}
+
 async function isConsoleAuthorized(
   // Supabase Edge runtime does not expose generated RPC types in this function.
   // deno-lint-ignore no-explicit-any
@@ -185,7 +214,7 @@ Deno.serve(async (req) => {
     const threadId: string | undefined = body?.threadId;
     const prompt: string = String(body?.prompt ?? "").trim();
     const agent: Agent = body?.agent;
-    if (!threadId || !prompt || !["chatgpt", "codex", "perplexity", "custom"].includes(agent)) {
+    if (!threadId || !prompt || !["chatgpt", "codex", "perplexity", "custom", "kimi"].includes(agent)) {
       return new Response(JSON.stringify({ error: "Parâmetros inválidos" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -278,6 +307,12 @@ Deno.serve(async (req) => {
         const r = await callPerplexity(`Contexto:\n${historyText}\n\nPergunta com fontes:\n${prompt}`);
         assistantContent = r.content;
         citations = r.citations;
+      } else if (agent === "kimi") {
+        modelUsed = Deno.env.get("KIMI_MODEL")?.trim() || "kimi-k2-0905-preview";
+        assistantContent = await callKimi(
+          systemBase + " Modo Kimi (Moonshot K2): motor de código open-weights, priorize código completo, correto e idiomático.",
+          `Contexto:\n${historyText}\n\nTarefa:\n${prompt}`,
+        );
       } else {
         modelUsed = Deno.env.get("CUSTOM_AI_MODEL")?.trim() ?? "custom";
         assistantContent = await callCustom(systemBase, `Contexto:\n${historyText}\n\n${prompt}`);
