@@ -156,7 +156,7 @@ export default function CodeConsole() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [agent, setAgent] = useState<Exclude<Agent, "user" | "sentinel">>("chatgpt");
+  const [agent, setAgent] = useState<Exclude<Agent, "user" | "sentinel">>("kimi");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [deploymentPlans, setDeploymentPlans] = useState<Record<string, DeploymentPlan>>({});
