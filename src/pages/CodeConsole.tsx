@@ -161,9 +161,9 @@ function cleanEnv(value: unknown): string | undefined {
 }
 
 function stripKimiCompatPrompt(content: string): string {
-  if (!content.startsWith("[KIMI_COMPAT_MODE]")) return content;
+  if (!/^\[[A-Z_]+_MODE\]/.test(content)) return content;
   const separator = content.indexOf("\n\n");
-  if (separator < 0) return content.replace(/^\[KIMI_COMPAT_MODE\]\s*/i, "").trim();
+  if (separator < 0) return content.replace(/^\[[A-Z_]+_MODE\]\s*/i, "").trim();
   return content.slice(separator + 2).trim() || content;
 }
 
