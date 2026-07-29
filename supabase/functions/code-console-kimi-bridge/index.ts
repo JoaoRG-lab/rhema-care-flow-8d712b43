@@ -124,6 +124,32 @@ async function callKimi(system: string, user: string): Promise<{ content: string
   throw lastErr ?? new KimiError("Kimi: falha desconhecida.", 500);
 }
 
+async function callOpenRouterFallback(system: string, user: string): Promise<{ content: string; model: string } | null> {
+  const key = pick("openrouter", "OPENROUTER_API_KEY");
+  if (!key) return null;
+  const model = Deno.env.get("KIMI_FALLBACK_MODEL")?.trim() || "moonshotai/kimi-k2";
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: 0.3,
+    }),
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content ?? "";
+  return content ? { content, model: `openrouter:${model}` } : null;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: functionCorsHeaders });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
