@@ -261,6 +261,8 @@ export default function CodeConsole() {
   async function send() {
     if (!activeId || !prompt.trim() || busy) return;
     const text = prompt.trim();
+    const invokeAgent = agent === "kimi" ? "chatgpt" : agent;
+    const invokePrompt = agent === "kimi" ? buildKimiCompatPrompt(text) : text;
     setPrompt("");
     setBusy(true);
     // Optimistic
@@ -278,16 +280,16 @@ export default function CodeConsole() {
 
     let { data, error } = await invokeEdgeFn("code-console-chat", {
       threadId: activeId,
-      prompt: text,
-      agent,
+      prompt: invokePrompt,
+      agent: invokeAgent,
     });
-    let usedKimiCompat = false;
+    let usedKimiCompat = agent === "kimi";
     let invokeError = edgeInvokeError(error, data);
 
     if (invokeError && /Parâmetros inválidos/i.test(invokeError)) {
       const details = (data as { details?: { allowedAgents?: string[] } } | null)?.details;
       const allowed = details?.allowedAgents ?? ["chatgpt", "codex", "perplexity", "custom"];
-      const fallbackAgent = (allowed.includes("custom") ? "custom" : allowed.find((a) => a !== "user")) as string | undefined;
+      const fallbackAgent = (allowed.includes("chatgpt") ? "chatgpt" : allowed.find((a) => a !== "user")) as string | undefined;
       if (fallbackAgent) {
         const retry = await invokeEdgeFn("code-console-chat", {
           threadId: activeId,
