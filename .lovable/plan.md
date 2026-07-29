@@ -1,34 +1,49 @@
-## Situação
+## Objetivo
 
-O app aponta em `src/integrations/supabase/client.ts` para o projeto Supabase **externo** `rfsaxstpfpigrjyiochi.supabase.co`. As ferramentas de deploy que eu tenho aqui só alcançam o projeto Lovable Cloud desta workspace (outro ref). Por isso todos os redeploys que fiz da `code-console-chat` foram para o projeto errado, e a versão em produção ainda rejeita `agent: "kimi"` com `{"error":"Parâmetros inválidos"}`.
+Permitir alternar de forma segura entre o projeto **Lovable Cloud** (`rqaqdhmdeyzyjglhxrne`) e o projeto **externo** (`rfsaxstpfpigrjyiochi`) via variáveis de ambiente, usando o prefixo `SUPABASIS_*` que você já cadastrou nos secrets — sem editar o cliente auto-gerado.
 
-Não consigo fazer o deploy no `rfsaxstpfpigrjyiochi` a partir daqui — não tenho credenciais desse projeto externo. Preciso da sua ajuda em um dos dois caminhos abaixo.
+## Contexto verificado
 
-## Caminho A (rápido) — você roda o deploy no projeto externo
+- `src/integrations/supabase/client.ts` é **auto-gerado** e hoje trava no projeto canônico `rfsaxstpfpigrjyiochi`, ignorando `.env` se o project id não bater. Não posso editá-lo.
+- O `.env` local aponta para o projeto Lovable Cloud (`rqaqdhmdeyzyjglhxrne`), causando o desalinhamento observado no Code Console.
+- Secrets já configurados com prefixo `SUPABASIS_*` (ex.: `SUPABASIS_URL`, `SUPABASIS_JWKS_URL`, `SUPABASES_PUBLI_TOKEN`, `SUPABASES_ACCESS_TOKEN`).
 
-1. Em uma máquina com Supabase CLI logada na conta dona do `rfsaxstpfpigrjyiochi`:
-   ```
-   supabase link --project-ref rfsaxstpfpigrjyiochi
-   supabase functions deploy code-console-chat
-   ```
-2. Confira que os secrets abaixo existem nesse projeto (Dashboard → Edge Functions → Secrets):
-   - `LOVABLE_API_KEY`
-   - `KIMI_API_KEY`
-   - `CONSOLE_ALLOWED_EMAIL` = `joaooz123@gmail.com`
-   - `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (padrão do projeto)
-3. Confira que o enum tem `kimi`:
-   ```sql
-   SELECT unnest(enum_range(NULL::code_console_agent));
-   ```
-   Se faltar: `ALTER TYPE code_console_agent ADD VALUE IF NOT EXISTS 'kimi';`
-4. Recarregue `/code-console` e teste com o agente Kimi.
+## O que vou fazer (código)
 
-Após isso o erro `"Parâmetros inválidos"` some.
+### 1. Novo módulo `src/integrations/supabase/runtime.ts`
+Wrapper de runtime que escolhe o projeto ativo sem tocar no arquivo auto-gerado:
 
-## Caminho B — migrar o app para o Lovable Cloud desta workspace
+- Lê `VITE_SUPABASE_TARGET` (`"cloud"` | `"external"` | `"auto"`, default `auto`).
+- Perfil `cloud` → usa `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (Lovable Cloud).
+- Perfil `external` → usa `VITE_SUPABASIS_URL` + `VITE_SUPABASIS_PUBLISHABLE_KEY` (projeto externo).
+- Perfil `auto` → detecta pela presença dos `VITE_SUPABASIS_*`.
+- Exporta:
+  - `activeSupabase` (cliente para o alvo escolhido — reusa `supabase` do arquivo auto-gerado quando o alvo é `external`, ou cria um novo cliente para `cloud`).
+  - `activeProjectId`, `activeProjectLabel` para telemetria/UI.
 
-Aponto o cliente para o projeto Lovable Cloud (que eu consigo administrar) e passo a deployar tudo daqui automaticamente. Custo: migração de schema/dados do `rfsaxstpfpigrjyiochi` (pacientes, threads, prontuários, tudo) para o novo projeto — trabalho considerável e sem sincronização retroativa.
+### 2. Adicionar chaves ao `.env` (as `VITE_*` não são secrets)
+```
+VITE_SUPABASE_TARGET=auto
+VITE_SUPABASIS_URL=https://rfsaxstpfpigrjyiochi.supabase.co
+VITE_SUPABASIS_PUBLISHABLE_KEY=sb_publishable_J8dthJB66ld8lhRIg4e8SA_ro6sr_na
+```
+(As `SUPABASIS_*` server-side já existem nos secrets e ficam disponíveis nas Edge Functions.)
 
-## Recomendação
+### 3. Helper `supabase/functions/_shared/supabasisClient.ts`
+Para Edge Functions: lê `SUPABASIS_URL` / `SUPABASE_URL` na ordem correta e retorna o client server-side apropriado, evitando funções deployadas em um projeto chamarem o outro.
 
-Caminho A resolve o problema hoje sem migração. Me diga qual você prefere; se for A e você quiser, eu preparo um script `deploy-code-console-chat.sh` com os comandos exatos para você rodar.
+### 4. UI mínima em `AIIntegrationPanel.tsx`
+Badge mostrando `Projeto ativo: Lovable Cloud` ou `External (rfsaxst…)` a partir de `activeProjectLabel`, para você conferir a olho antes de operar.
+
+### 5. Documentação `docs/SUPABASE_TARGET.md`
+Como alternar entre projetos, quais secrets/env correspondem a cada perfil, e o cuidado ao deployar Edge Functions para o alvo certo.
+
+## Sobre os dois comandos que você citou
+
+- `npm install @supabase/server` — **este pacote não existe** no registry npm. O ecossistema oficial expõe `@supabase/supabase-js` (já instalado) e `@supabase/ssr` (usado quando há renderização server-side, o que não é o caso deste app SPA/Vite). Se você quis dizer `@supabase/ssr`, posso adicioná-lo — mas não é necessário para o objetivo acima. Confirme qual pacote você tinha em mente.
+- `npx skills add supabase/server` — comando de outro CLI (Claude Code / Cursor). O sandbox da Lovable não roda skills externas assim; skills aqui são gerenciadas em Settings → Skills, e a skill relevante já ativa é `supabase-integration`. Nada a fazer no repositório.
+
+## O que fica de fora
+
+- Não vou editar `src/integrations/supabase/client.ts` (auto-gerado).
+- Não vou trocar o alvo padrão sem sua confirmação — o default de `auto` respeita seu `.env` atual (Lovable Cloud) até você setar `VITE_SUPABASE_TARGET=external`.
