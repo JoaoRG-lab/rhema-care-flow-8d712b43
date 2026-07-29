@@ -149,6 +149,16 @@ function formatConsoleRuntimeError(raw: string): string {
   return raw;
 }
 
+function buildKimiCompatPrompt(text: string): string {
+  return [
+    "[KIMI_COMPAT_MODE]",
+    "A UI selecionou Kimi K2, mas a Edge Function deste projeto ainda pode estar com a lista antiga de agentes.",
+    "Atue como motor de código Kimi: resposta objetiva, TypeScript/React/Deno-Edge completo, com tratamento de erro e caminhos de arquivo nos blocos.",
+    "",
+    text,
+  ].join("\n");
+}
+
 export default function CodeConsole() {
   const { user } = useAuth();
   const ultimateAccess = useUltimateAccess();
@@ -266,19 +276,35 @@ export default function CodeConsole() {
     };
     setMessages((m) => [...m, optimistic]);
 
-    const { data, error } = await invokeEdgeFn("code-console-chat", {
+    let { data, error } = await invokeEdgeFn("code-console-chat", {
       threadId: activeId,
       prompt: text,
       agent,
     });
+    let usedKimiCompat = false;
+    let invokeError = edgeInvokeError(error, data);
+
+    if (agent === "kimi" && invokeError && /Parâmetros inválidos/i.test(invokeError)) {
+      const retry = await invokeEdgeFn("code-console-chat", {
+        threadId: activeId,
+        prompt: buildKimiCompatPrompt(text),
+        agent: "custom",
+      });
+      data = retry.data;
+      error = retry.error;
+      usedKimiCompat = true;
+      invokeError = edgeInvokeError(error, data);
+    }
     setBusy(false);
-    const invokeError = edgeInvokeError(error, data);
     if (invokeError) {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
       reportConsoleError(invokeError);
       return;
     }
     setConsoleError(null);
+    if (usedKimiCompat) {
+      toast.info("Kimi enviado em modo compatível para a Edge Function atualmente publicada.");
+    }
     // Re-fetch (gets user msg + assistant msg in correct order)
     const { data: refreshed } = await supabase
       .from("code_console_messages")
