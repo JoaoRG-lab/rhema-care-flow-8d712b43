@@ -15,6 +15,7 @@ const BodySchema = z.object({
   threadId: z.string().uuid(),
   prompt: z.string().trim().min(1).max(MAX_PROMPT_CHARS),
   backendApiKey: z.string().trim().min(16).max(512),
+  backendUrl: z.string().trim().url().optional(),
 });
 
 function json(data: unknown, status = 200): Response {
