@@ -40,9 +40,18 @@ function getExternalBackendUrl(): string {
 }
 
 function getKimiKey(): string {
-  const key = Deno.env.get("KIMI_API_KEY")?.trim();
+  const key = pick("KIMI_API_KEY", "MOONSHOT_API_KEY");
   if (!key) throw new Error("KIMI_API_KEY ausente no ambiente da função");
   return key;
+}
+
+function getKimiRuntimeError(): string | null {
+  try {
+    getKimiKey();
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Kimi não configurado";
+  }
 }
 
 function sentinelScan(text: string): string | null {
@@ -119,6 +128,11 @@ Deno.serve(async (req) => {
       authorized = Boolean(ultimate);
     }
     if (!authorized) return json({ error: "Code Console restrito ao usuário ultimate autorizado" }, 403);
+
+    const kimiRuntimeError = getKimiRuntimeError();
+    if (kimiRuntimeError) {
+      return json({ error: kimiRuntimeError, code: "KIMI_RUNTIME_NOT_CONFIGURED" }, 503);
+    }
 
     const { data: thread, error: threadError } = await userClient
       .from("code_console_threads")
