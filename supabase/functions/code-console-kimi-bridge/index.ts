@@ -124,6 +124,32 @@ async function callKimi(system: string, user: string): Promise<{ content: string
   throw lastErr ?? new KimiError("Kimi: falha desconhecida.", 500);
 }
 
+async function callOpenRouterFallback(system: string, user: string): Promise<{ content: string; model: string } | null> {
+  const key = pick("openrouter", "OPENROUTER_API_KEY");
+  if (!key) return null;
+  const model = Deno.env.get("KIMI_FALLBACK_MODEL")?.trim() || "moonshotai/kimi-k2";
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: 0.3,
+    }),
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content ?? "";
+  return content ? { content, model: `openrouter:${model}` } : null;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: functionCorsHeaders });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
@@ -196,7 +222,21 @@ Deno.serve(async (req) => {
       "Nunca exponha segredos, force-push, rm -rf, DROP/TRUNCATE ou operações destrutivas sem salvaguardas explícitas.",
     ].join(" ");
 
-    const { content, model } = await callKimi(system, `Contexto da thread:\n${historyText}\n\nTarefa:\n${prompt}`);
+    const userPrompt = `Contexto da thread:\n${historyText}\n\nTarefa:\n${prompt}`;
+    let content: string;
+    let model: string;
+    try {
+      ({ content, model } = await callKimi(system, userPrompt));
+    } catch (err) {
+      if (err instanceof KimiError && err.status === 429) {
+        const fb = await callOpenRouterFallback(system, userPrompt);
+        if (!fb) throw err;
+        content = fb.content;
+        model = fb.model;
+      } else {
+        throw err;
+      }
+    }
     const warning = sentinelScan(content);
 
     let assistantInsert = await userClient
