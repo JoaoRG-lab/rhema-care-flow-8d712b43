@@ -1,0 +1,1 @@
+ALTER TYPE public.code_console_agent ADD VALUE IF NOT EXISTS 'kimi';
