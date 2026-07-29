@@ -3434,6 +3434,7 @@ export type Database = {
         | "perplexity"
         | "custom"
         | "sentinel"
+        | "kimi"
       contribution_category:
         | "clinical_pearl"
         | "guideline_summary"
@@ -3612,6 +3613,7 @@ export const Constants = {
         "perplexity",
         "custom",
         "sentinel",
+        "kimi",
       ],
       contribution_category: [
         "clinical_pearl",

@@ -15,7 +15,7 @@ import { invokeEdgeFn } from "@/lib/invokeEdgeFn";
 import { useUltimateAccess } from "@/hooks/useUltimateAccess";
 import { copyText } from "@/lib/clipboard";
 
-type Agent = "user" | "chatgpt" | "codex" | "perplexity" | "custom" | "sentinel";
+type Agent = "user" | "chatgpt" | "codex" | "perplexity" | "custom" | "kimi" | "sentinel";
 
 interface Thread {
   id: string;
@@ -105,6 +105,17 @@ const AGENT_META: Record<
       "Implemente o score clínico ... em src/lib/calculators.ts com referência validada",
     ],
   },
+  kimi: {
+    label: "Kimi K2",
+    icon: Code2,
+    hint: "Moonshot Kimi K2 — motor open-weights de código",
+    scope: "Geração e refator de código, open-weights, forte em TS/React/SQL",
+    paths: ["src/**", "supabase/functions/**"],
+    starters: [
+      "Kimi, implemente ... com tipos completos e tratamento de erro.",
+      "Kimi, refatore src/lib/<arquivo>.ts para ...",
+    ],
+  },
   custom: {
     label: "Custom API",
     icon: KeyRound,
@@ -145,7 +156,7 @@ export default function CodeConsole() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [agent, setAgent] = useState<Exclude<Agent, "user" | "sentinel">>("chatgpt");
+  const [agent, setAgent] = useState<Exclude<Agent, "user" | "sentinel">>("kimi");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [deploymentPlans, setDeploymentPlans] = useState<Record<string, DeploymentPlan>>({});
