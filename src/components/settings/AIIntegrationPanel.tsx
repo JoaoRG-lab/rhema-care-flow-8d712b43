@@ -16,6 +16,7 @@ import {
 } from "@/lib/mcp/client";
 import { listRegisteredTools } from "@/lib/mcp/registry";
 import { getEvents, subscribe, type MCPEvent } from "@/lib/mcp/eventLog";
+import { activeProjectLabel, activeSupabaseTarget } from "@/integrations/supabase/runtime";
 
 function useEventLog(): MCPEvent[] {
   return useSyncExternalStore(subscribe, getEvents, getEvents);
@@ -105,6 +106,13 @@ export default function AIIntegrationPanel() {
 
         <div className="text-xs text-muted-foreground break-all" aria-label="MCP endpoint">
           Endpoint: <span className="font-mono">{endpoint}</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Projeto ativo:</span>
+          <Badge variant="outline" className="font-mono">
+            {activeProjectLabel}
+          </Badge>
+          <span className="text-muted-foreground">· target={activeSupabaseTarget}</span>
         </div>
 
         {error && state !== "connected" && (
