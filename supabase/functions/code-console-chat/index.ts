@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 type Agent = "chatgpt" | "codex" | "perplexity" | "custom" | "kimi";
+const ALLOWED_AGENTS: Agent[] = ["chatgpt", "codex", "perplexity", "custom", "kimi"];
 const MAX_PROMPT_CHARS = 12000;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -21,6 +22,12 @@ function getRequiredSecret(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`${name} ausente no ambiente da Edge Function`);
   return value;
+}
+
+function normalizeAgent(value: unknown): Agent | null {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "moonshot" || raw === "kimi-k2" || raw === "kimi_k2") return "kimi";
+  return ALLOWED_AGENTS.includes(raw as Agent) ? (raw as Agent) : null;
 }
 
 // Sentinel — destructive-code heuristics. Returns warning text or null.
@@ -213,9 +220,17 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const threadId: string | undefined = body?.threadId;
     const prompt: string = String(body?.prompt ?? "").trim();
-    const agent: Agent = body?.agent;
-    if (!threadId || !prompt || !["chatgpt", "codex", "perplexity", "custom", "kimi"].includes(agent)) {
-      return new Response(JSON.stringify({ error: "Parâmetros inválidos" }), {
+    const agent = normalizeAgent(body?.agent);
+    if (!threadId || !prompt || !agent) {
+      return new Response(JSON.stringify({
+        error: "Parâmetros inválidos",
+        details: {
+          threadId: Boolean(threadId),
+          prompt: Boolean(prompt),
+          agent: String(body?.agent ?? ""),
+          allowedAgents: ALLOWED_AGENTS,
+        },
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
