@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { supabase, supabasePublishableKey } from "@/integrations/supabase/client";
+import { supabase, supabasePublishableKey, supabaseUrl } from "@/integrations/supabase/client";
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,7 +184,7 @@ async function invokeKimiBridge(threadId: string, prompt: string): Promise<{ dat
         apikey: cloudKey,
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ threadId, prompt, backendApiKey: supabasePublishableKey }),
+      body: JSON.stringify({ threadId, prompt, backendApiKey: supabasePublishableKey, backendUrl: supabaseUrl }),
     });
 
     let payload: KimiBridgeResponse & { error?: string } | null = null;
