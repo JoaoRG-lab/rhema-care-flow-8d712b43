@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabasePublishableKey } from "@/integrations/supabase/client";
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -149,14 +149,58 @@ function formatConsoleRuntimeError(raw: string): string {
   return raw;
 }
 
-function buildKimiCompatPrompt(text: string): string {
-  return [
-    "[KIMI_COMPAT_MODE]",
-    "A UI selecionou Kimi K2, mas a Edge Function deste projeto ainda pode estar com a lista antiga de agentes.",
-    "Atue como motor de código Kimi: resposta objetiva, TypeScript/React/Deno-Edge completo, com tratamento de erro e caminhos de arquivo nos blocos.",
-    "",
-    text,
-  ].join("\n");
+interface KimiBridgeResponse {
+  message?: Message;
+  agentStored?: Agent;
+}
+
+function cleanEnv(value: unknown): string | undefined {
+  return typeof value === "string" ? value.trim().replace(/^['"`]+|['"`]+$/g, "") || undefined : undefined;
+}
+
+function stripKimiCompatPrompt(content: string): string {
+  if (!content.startsWith("[KIMI_COMPAT_MODE]")) return content;
+  const separator = content.indexOf("\n\n");
+  if (separator < 0) return content.replace(/^\[KIMI_COMPAT_MODE\]\s*/i, "").trim();
+  return content.slice(separator + 2).trim() || content;
+}
+
+async function invokeKimiBridge(threadId: string, prompt: string): Promise<{ data: KimiBridgeResponse | null; error: string | null; status?: number }> {
+  const cloudUrl = cleanEnv(import.meta.env.VITE_SUPABASE_URL);
+  const cloudKey = cleanEnv(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY);
+  if (!cloudUrl || !cloudKey) {
+    return { data: null, error: "Backend Lovable Cloud não configurado para acionar o Kimi." };
+  }
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) return { data: null, error: "Sessão expirada. Faça login novamente.", status: 401 };
+
+    const response = await fetch(`${cloudUrl.replace(/\/+$/, "")}/functions/v1/code-console-kimi-bridge`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: cloudKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ threadId, prompt, backendApiKey: supabasePublishableKey }),
+    });
+
+    let payload: KimiBridgeResponse & { error?: string } | null = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      return { data: payload, error: payload?.error ?? `Kimi retornou status ${response.status}.`, status: response.status };
+    }
+    return { data: payload, error: null, status: response.status };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error.message : "Falha de rede ao chamar Kimi." };
+  }
 }
 
 export default function CodeConsole() {
@@ -261,8 +305,6 @@ export default function CodeConsole() {
   async function send() {
     if (!activeId || !prompt.trim() || busy) return;
     const text = prompt.trim();
-    const invokeAgent = agent === "kimi" ? "chatgpt" : agent;
-    const invokePrompt = agent === "kimi" ? buildKimiCompatPrompt(text) : text;
     setPrompt("");
     setBusy(true);
     // Optimistic
@@ -278,27 +320,27 @@ export default function CodeConsole() {
     };
     setMessages((m) => [...m, optimistic]);
 
-    let { data, error } = await invokeEdgeFn("code-console-chat", {
-      threadId: activeId,
-      prompt: invokePrompt,
-      agent: invokeAgent,
-    });
-    let usedKimiCompat = agent === "kimi";
+    let { data, error } = agent === "kimi"
+      ? await invokeKimiBridge(activeId, text)
+      : await invokeEdgeFn("code-console-chat", {
+        threadId: activeId,
+        prompt: text,
+        agent,
+      });
     let invokeError = edgeInvokeError(error, data);
 
-    if (invokeError && /Parâmetros inválidos/i.test(invokeError)) {
+    if (agent !== "kimi" && invokeError && /Parâmetros inválidos/i.test(invokeError)) {
       const details = (data as { details?: { allowedAgents?: string[] } } | null)?.details;
       const allowed = details?.allowedAgents ?? ["chatgpt", "codex", "perplexity", "custom"];
       const fallbackAgent = (allowed.includes("chatgpt") ? "chatgpt" : allowed.find((a) => a !== "user")) as string | undefined;
       if (fallbackAgent) {
         const retry = await invokeEdgeFn("code-console-chat", {
           threadId: activeId,
-          prompt: agent === "kimi" ? buildKimiCompatPrompt(text) : text,
+          prompt: text,
           agent: fallbackAgent,
         });
         data = retry.data;
         error = retry.error;
-        usedKimiCompat = agent === "kimi";
         invokeError = edgeInvokeError(error, data);
       }
     }
@@ -309,9 +351,6 @@ export default function CodeConsole() {
       return;
     }
     setConsoleError(null);
-    if (usedKimiCompat) {
-      toast.info("Kimi enviado em modo compatível para a Edge Function atualmente publicada.");
-    }
     // Re-fetch (gets user msg + assistant msg in correct order)
     const { data: refreshed } = await supabase
       .from("code_console_messages")
@@ -649,7 +688,7 @@ export default function CodeConsole() {
                         )}
                       >
                         {isUser ? (
-                          <p className="whitespace-pre-wrap text-sm">{m.content}</p>
+                          <p className="whitespace-pre-wrap text-sm">{stripKimiCompatPrompt(m.content)}</p>
                         ) : (
                           <div className="prose prose-sm dark:prose-invert max-w-none">
                             <ReactMarkdown>{m.content}</ReactMarkdown>
