@@ -154,6 +154,8 @@ interface KimiBridgeResponse {
   agentStored?: Agent;
 }
 
+const KIMI_ENGINE_AGENTS = new Set<Exclude<Agent, "user" | "sentinel">>(["kimi", "chatgpt", "codex"]);
+
 function cleanEnv(value: unknown): string | undefined {
   return typeof value === "string" ? value.trim().replace(/^['"`]+|['"`]+$/g, "") || undefined : undefined;
 }
@@ -163,6 +165,12 @@ function stripKimiCompatPrompt(content: string): string {
   const separator = content.indexOf("\n\n");
   if (separator < 0) return content.replace(/^\[KIMI_COMPAT_MODE\]\s*/i, "").trim();
   return content.slice(separator + 2).trim() || content;
+}
+
+function providerConfigFailure(data: unknown): string | null {
+  const message = (data as { message?: Partial<Message> } | null)?.message;
+  const combined = [message?.content, message?.destructive_warning].filter(Boolean).join("\n");
+  return /LOVABLE_API_KEY ausente|Falha operacional do provedor/i.test(combined) ? combined : null;
 }
 
 async function invokeKimiBridge(threadId: string, prompt: string): Promise<{ data: KimiBridgeResponse | null; error: string | null; status?: number }> {
@@ -320,7 +328,8 @@ export default function CodeConsole() {
     };
     setMessages((m) => [...m, optimistic]);
 
-    let { data, error } = agent === "kimi"
+    const useKimiEngine = KIMI_ENGINE_AGENTS.has(agent);
+    let { data, error } = useKimiEngine
       ? await invokeKimiBridge(activeId, text)
       : await invokeEdgeFn("code-console-chat", {
         threadId: activeId,
@@ -329,7 +338,7 @@ export default function CodeConsole() {
       });
     let invokeError = edgeInvokeError(error, data);
 
-    if (agent !== "kimi" && invokeError && /Parâmetros inválidos/i.test(invokeError)) {
+    if (!useKimiEngine && invokeError && /Parâmetros inválidos/i.test(invokeError)) {
       const details = (data as { details?: { allowedAgents?: string[] } } | null)?.details;
       const allowed = details?.allowedAgents ?? ["chatgpt", "codex", "perplexity", "custom"];
       const fallbackAgent = (allowed.includes("chatgpt") ? "chatgpt" : allowed.find((a) => a !== "user")) as string | undefined;
@@ -343,6 +352,13 @@ export default function CodeConsole() {
         error = retry.error;
         invokeError = edgeInvokeError(error, data);
       }
+    }
+
+    if (!useKimiEngine && !invokeError && providerConfigFailure(data)) {
+      const retry = await invokeKimiBridge(activeId, text);
+      data = retry.data;
+      error = retry.error;
+      invokeError = edgeInvokeError(error, data);
     }
     setBusy(false);
     if (invokeError) {
