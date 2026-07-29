@@ -57,7 +57,8 @@ async function callLovableGateway(model: string, system: string, user: string): 
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      "Lovable-API-Key": LOVABLE_API_KEY,
+      "X-Lovable-AIG-SDK": "code-console-edge",
     },
     body: JSON.stringify({
       model,
@@ -75,6 +76,10 @@ async function callLovableGateway(model: string, system: string, user: string): 
   }
   const data = await res.json();
   return data?.choices?.[0]?.message?.content ?? "";
+}
+
+function hasLovableGatewayKey(): boolean {
+  return Boolean(Deno.env.get("LOVABLE_API_KEY")?.trim());
 }
 
 async function callPerplexity(prompt: string): Promise<{ content: string; citations: unknown }> {
@@ -309,14 +314,30 @@ Deno.serve(async (req) => {
     try {
       if (agent === "chatgpt") {
         modelUsed = "openai/gpt-5";
-        assistantContent = await callLovableGateway(modelUsed, systemBase, `Contexto da thread:\n${historyText}\n\nNova pergunta:\n${prompt}`);
+        if (hasLovableGatewayKey()) {
+          assistantContent = await callLovableGateway(modelUsed, systemBase, `Contexto da thread:\n${historyText}\n\nNova pergunta:\n${prompt}`);
+        } else {
+          modelUsed = Deno.env.get("KIMI_MODEL")?.trim() || "kimi-k2-0905-preview";
+          assistantContent = await callKimi(
+            systemBase + " Modo ChatGPT via Kimi fallback: preserve o escopo do agente e entregue resposta de código completa.",
+            `Contexto:\n${historyText}\n\nNova pergunta:\n${prompt}`,
+          );
+        }
       } else if (agent === "codex") {
         modelUsed = "openai/gpt-5";
-        assistantContent = await callLovableGateway(
-          modelUsed,
-          systemBase + " Modo Codex: priorize código completo, com tipos, tratamento de erro e testes mínimos.",
-          `Contexto:\n${historyText}\n\nTarefa de código:\n${prompt}`,
-        );
+        if (hasLovableGatewayKey()) {
+          assistantContent = await callLovableGateway(
+            modelUsed,
+            systemBase + " Modo Codex: priorize código completo, com tipos, tratamento de erro e testes mínimos.",
+            `Contexto:\n${historyText}\n\nTarefa de código:\n${prompt}`,
+          );
+        } else {
+          modelUsed = Deno.env.get("KIMI_MODEL")?.trim() || "kimi-k2-0905-preview";
+          assistantContent = await callKimi(
+            systemBase + " Modo Codex via Kimi fallback: priorize código completo, com tipos, tratamento de erro e testes mínimos.",
+            `Contexto:\n${historyText}\n\nTarefa de código:\n${prompt}`,
+          );
+        }
       } else if (agent === "perplexity") {
         modelUsed = "sonar-pro";
         const r = await callPerplexity(`Contexto:\n${historyText}\n\nPergunta com fontes:\n${prompt}`);
