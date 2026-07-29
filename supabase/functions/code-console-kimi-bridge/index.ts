@@ -233,6 +233,7 @@ Deno.serve(async (req) => {
     return json({ message: assistantInsert.data, agentStored: assistantInsert.data.agent });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return json({ error: message || "Falha ao executar Kimi" }, 500);
+    const status = error instanceof KimiError ? error.status : 500;
+    return json({ error: message || "Falha ao executar Kimi" }, status);
   }
 });
