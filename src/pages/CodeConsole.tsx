@@ -284,16 +284,21 @@ export default function CodeConsole() {
     let usedKimiCompat = false;
     let invokeError = edgeInvokeError(error, data);
 
-    if (agent === "kimi" && invokeError && /Parâmetros inválidos/i.test(invokeError)) {
-      const retry = await invokeEdgeFn("code-console-chat", {
-        threadId: activeId,
-        prompt: buildKimiCompatPrompt(text),
-        agent: "custom",
-      });
-      data = retry.data;
-      error = retry.error;
-      usedKimiCompat = true;
-      invokeError = edgeInvokeError(error, data);
+    if (invokeError && /Parâmetros inválidos/i.test(invokeError)) {
+      const details = (data as { details?: { allowedAgents?: string[] } } | null)?.details;
+      const allowed = details?.allowedAgents ?? ["chatgpt", "codex", "perplexity", "custom"];
+      const fallbackAgent = (allowed.includes("custom") ? "custom" : allowed.find((a) => a !== "user")) as string | undefined;
+      if (fallbackAgent) {
+        const retry = await invokeEdgeFn("code-console-chat", {
+          threadId: activeId,
+          prompt: agent === "kimi" ? buildKimiCompatPrompt(text) : text,
+          agent: fallbackAgent,
+        });
+        data = retry.data;
+        error = retry.error;
+        usedKimiCompat = agent === "kimi";
+        invokeError = edgeInvokeError(error, data);
+      }
     }
     setBusy(false);
     if (invokeError) {

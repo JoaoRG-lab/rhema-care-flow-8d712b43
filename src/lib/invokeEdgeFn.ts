@@ -78,7 +78,7 @@ export async function invokeEdgeFn<T = unknown>(
         response.status,
         responseData?.error || responseData?.message
       );
-      return { data: null, error: errorMsg, status: response.status };
+      return { data: responseData as T, error: errorMsg, status: response.status };
     }
 
     return { data: responseData as T, error: null, status: response.status };
