@@ -66,34 +66,62 @@ function sentinelScan(text: string): string | null {
   return hits.length ? `⚠ Padrões destrutivos detectados: ${hits.join(", ")}` : null;
 }
 
+class KimiError extends Error {
+  constructor(message: string, public status: number, public retryAfterMs?: number) {
+    super(message);
+  }
+}
+
 async function callKimi(system: string, user: string): Promise<{ content: string; model: string }> {
   const model = Deno.env.get("KIMI_MODEL")?.trim() || "kimi-k2-0905-preview";
   const baseUrl = Deno.env.get("KIMI_BASE_URL")?.trim() || "https://api.moonshot.ai/v1";
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getKimiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      temperature: 0.3,
-    }),
+  const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const payload = JSON.stringify({
+    model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    temperature: 0.3,
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    if (response.status === 429) throw new Error("Kimi: limite de requisições atingido (429).");
-    if (response.status === 401) throw new Error("Kimi: KIMI_API_KEY inválida (401).");
-    throw new Error(`Kimi erro ${response.status}: ${body.slice(0, 240)}`);
-  }
+  const maxAttempts = 3;
+  let lastErr: KimiError | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getKimiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: payload,
+    });
 
-  const data = await response.json();
-  return { content: data?.choices?.[0]?.message?.content ?? "", model };
+    if (response.ok) {
+      const data = await response.json();
+      return { content: data?.choices?.[0]?.message?.content ?? "", model };
+    }
+
+    const body = await response.text();
+    if (response.status === 429) {
+      const retryHeader = response.headers.get("retry-after");
+      const retryAfterMs = retryHeader ? Math.min(Number(retryHeader) * 1000 || 0, 8000) : 0;
+      lastErr = new KimiError(
+        "Kimi: limite de requisições atingido (429). Aguarde alguns segundos e tente novamente.",
+        429,
+        retryAfterMs,
+      );
+      if (attempt < maxAttempts) {
+        const backoff = retryAfterMs || Math.min(1000 * 2 ** (attempt - 1), 4000);
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
+      }
+      break;
+    }
+    if (response.status === 401) throw new KimiError("Kimi: KIMI_API_KEY inválida (401).", 401);
+    throw new KimiError(`Kimi erro ${response.status}: ${body.slice(0, 240)}`, response.status);
+  }
+  throw lastErr ?? new KimiError("Kimi: falha desconhecida.", 500);
 }
 
 Deno.serve(async (req) => {
