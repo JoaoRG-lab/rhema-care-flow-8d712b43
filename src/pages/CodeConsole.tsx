@@ -154,7 +154,7 @@ interface KimiBridgeResponse {
   agentStored?: Agent;
 }
 
-const KIMI_ENGINE_AGENTS = new Set<Exclude<Agent, "user" | "sentinel">>(["kimi", "chatgpt", "codex"]);
+const KIMI_ENGINE_AGENTS = new Set<Exclude<Agent, "user" | "sentinel">>(["kimi", "chatgpt", "codex", "custom"]);
 
 function cleanEnv(value: unknown): string | undefined {
   return typeof value === "string" ? value.trim().replace(/^['"`]+|['"`]+$/g, "") || undefined : undefined;
@@ -165,6 +165,14 @@ function stripKimiCompatPrompt(content: string): string {
   const separator = content.indexOf("\n\n");
   if (separator < 0) return content.replace(/^\[KIMI_COMPAT_MODE\]\s*/i, "").trim();
   return content.slice(separator + 2).trim() || content;
+}
+
+function renderConsoleMessageContent(message: Message): string {
+  const content = stripKimiCompatPrompt(message.content);
+  if (message.agent !== "user" && /LOVABLE_API_KEY ausente|Não consegui chamar o provedor configurado/i.test(content)) {
+    return "O motor principal foi reconfigurado. Envie a próxima instrução nesta thread para continuar pelo Kimi bridge, sem depender da chave Lovable no Console.";
+  }
+  return content;
 }
 
 function providerConfigFailure(data: unknown): string | null {
@@ -330,7 +338,7 @@ export default function CodeConsole() {
 
     const useKimiEngine = KIMI_ENGINE_AGENTS.has(agent);
     let { data, error } = useKimiEngine
-      ? await invokeKimiBridge(activeId, text)
+      ? await invokeKimiBridge(activeId, `[${agent.toUpperCase()}_MODE]\n\n${text}`)
       : await invokeEdgeFn("code-console-chat", {
         threadId: activeId,
         prompt: text,
@@ -704,10 +712,10 @@ export default function CodeConsole() {
                         )}
                       >
                         {isUser ? (
-                          <p className="whitespace-pre-wrap text-sm">{stripKimiCompatPrompt(m.content)}</p>
+                          <p className="whitespace-pre-wrap text-sm">{renderConsoleMessageContent(m)}</p>
                         ) : (
                           <div className="prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown>{m.content}</ReactMarkdown>
+                            <ReactMarkdown>{renderConsoleMessageContent(m)}</ReactMarkdown>
                           </div>
                         )}
                       </div>
