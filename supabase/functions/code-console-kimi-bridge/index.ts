@@ -98,15 +98,18 @@ Deno.serve(async (req) => {
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) return json({ error: "Parâmetros inválidos", details: parsed.error.flatten().fieldErrors }, 400);
 
-    const { threadId, prompt, backendApiKey } = parsed.data;
-    const backendUrl = getExternalBackendUrl();
+    const { threadId, prompt, backendApiKey, backendUrl: bodyBackendUrl } = parsed.data;
+    const backendUrl = (bodyBackendUrl ?? getExternalBackendUrl()).replace(/\/+$/, "");
     const userClient = createClient(backendUrl, backendApiKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: { headers: { Authorization: authHeader, apikey: backendApiKey } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData?.user) return json({ error: "JWT inválido" }, 401);
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: userData, error: userError } = await userClient.auth.getUser(token);
+    if (userError || !userData?.user) {
+      return json({ error: "JWT inválido", detail: userError?.message, backendUrl }, 401);
+    }
 
     const userId = userData.user.id;
     const email = userData.user.email?.toLowerCase();
